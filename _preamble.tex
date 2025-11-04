@@ -1,0 +1,23 @@
+% Minimal preamble for wrapped R code in PDF
+\usepackage{fvextra} % enhanced verbatim support (required for breaklines)
+\usepackage{xcolor}  % for background color
+
+% Define background color
+\definecolor{codebg}{HTML}{F7F7F7}
+
+% Redefine knitr/Quarto code environment
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{
+  breaklines,        % wrap long lines
+  breakanywhere,     % allow wrapping inside words
+  fontsize=\small,   % smaller font for code
+  frame=single,      % single-line box
+  rulecolor=\color{black},
+  bgcolor=codebg,    % background color
+  commandchars=\\\{\} % preserve knitr commands
+}
+
+% Optional: style inline code to match chunk background
+\let\oldtexttt\texttt
+\renewcommand{\texttt}[1]{%
+  \colorbox{codebg}{\oldtexttt{#1}}%
+}
