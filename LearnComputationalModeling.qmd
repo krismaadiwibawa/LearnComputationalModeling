@@ -1,0 +1,162 @@
+---
+title: "LearnComputationalModeling"
+author: "Krisma Adiwibawa"
+format:
+  pdf:
+    code-overflow: wrap
+    include-in-header: _preamble.tex
+editor: visual
+---
+
+## Chapter 2: From Words to Models
+
+### 2.2.2 The Random Walk Model
+
+Listing 2.1 A simple random-walk model
+
+```{r listing_2.1}
+
+#random-walk model
+nreps <- 10000 #number of random-walks (decisions)
+nsamples <- 2000 #number of times that evidence is being sampled for each decision
+
+drift <- 0.0 #noninformative stimulus
+             #drift rate: amount of evidence available during sampling
+sdrw <- 0.3  #noise in the evidence as standard deviation
+criterion <- 3 #response criterion (the distance of the 2 boundaries from origin)
+
+latencies <- rep(0, nreps) #vector containing zeros
+responses <- rep(0, nreps) #vector containing zeros
+evidence <- matrix(0, nreps, nsamples+1) #a matric containing zeros
+for (i in c(1:nreps)) {
+  evidence[i,] <- cumsum(c(0, rnorm(nsamples, drift, sdrw))) #evidence accumulation
+  p <- which(abs(evidence[i,])>criterion)[1] #the step at which decision is made (the column)
+  responses[i] <- sign(evidence[i,p]) #return +1 or -1
+  latencies[i] <- p
+}
+
+#View(evidence)
+```
+
+Listing 2.2 Plot up to 5 random-walk paths
+
+```{r listing_2.2, fig.width=10, fig.height=6}
+
+#plot up to 5 random-walk paths
+tbpn <- min(nreps, 5) #to-be-plotted-number
+plot(1:max(latencies[1:tbpn])+10, # create x-axis as needed (what the longest latency?
+     type="n", #create empty plot
+     las=1, #make the y-axis labels horizontal
+     ylim=c(-criterion-.5, criterion+.5), #set y-axis limit, give extra room above and below criterion
+     ylab="Evidence", xlab="Decision time")
+for (i in c(1:tbpn)) {
+       lines(evidence[i, 1:(latencies[i]-1)]) #this is the values in row i, which is the evidence sampling. -1 means plot the line just before the decision
+}
+abline(h=c(criterion, -criterion), lty="dashed") #create a dashed line for criterion (upper & lower decision treshold)
+```
+
+Listing 2.3 Plot distribution of response latencies from random-walk
+
+```{r listing_2.3, fig.width=10, fig.height=8}
+
+#plot histogram latencies
+par(mfrow=c(2,1)) #split the plotting area into 2 rows and 1 column
+toprt <- latencies[responses>0] #latencies that corresponds to +1
+topprop <- length(toprt)/nreps #proportion of top responses relative to all trials
+hist(toprt, col="gray",
+     xlab="Decision time", xlim=c(0, max(latencies)),
+     main=paste("Top responses (", as.numeric(topprop),
+     ") m=", as.character(signif(mean(toprt),4)),
+     sep=""), las=1)
+botrt <- latencies[responses<0] #latencies that corresponds to -1
+botprop <- length(botrt)/nreps
+hist(botrt, col="gray",
+     xlab="Decision time", xlim=c(0, max(latencies)),
+     main=paste("Bottom responses (", as.numeric(botprop),
+                ") m=", as.character(signif(mean(botrt), 4))
+                )
+     )
+```
+
+Listing 2.4 A random-walk model with trial-to-trial variability
+
+```{r listing_2.4}
+
+#random walk model with unequal latencies between responses classes
+nreps <- 1000
+nsamples <- 2000
+
+drift <- 0.03  # 0 = noninformative stimulus; >0 = informative
+sdrw <- 0.3
+criterion <- 3 
+t2tsd  <- c(0.0,0.025)
+
+latencies <- rep(0,nreps)
+responses <- rep(0,nreps)
+evidence <- matrix(0, nreps, nsamples+1) 
+for (i in c(1:nreps)) { 
+  sp <- rnorm(1,0,t2tsd[1]) 
+  dr <- rnorm(1,drift,t2tsd[2]) 
+  evidence[i,] <- cumsum(c(sp,rnorm(nsamples,dr,sdrw))) 
+  p <-  which(abs(evidence[i,])>criterion)[1]
+  responses[i] <- sign(evidence[i,p])
+  latencies[i]  <- p
+}
+```
+
+Listing 2.5
+
+```{r listing_2.5}
+
+#plot up to 5 random walk paths
+tbpn <- min(nreps,5)
+plot(1:max(latencies[1:tbpn])+10,type="n",las=1,
+     ylim=c(-criterion-.5,criterion+.5),
+     ylab="Evidence",xlab="Decision time")
+for (i in c(1:tbpn)) {
+  lines(evidence[i,1:(latencies[i]-1)])   
+}
+abline(h=c(criterion,-criterion),lty="dashed")  
+```
+
+Listing 2.6
+
+```{r listing_2.6}
+
+#plot histograms of latencies
+par(mfrow=c(2,1))
+toprt <- latencies[responses>0]
+topprop <- length(toprt)/nreps
+hist(toprt,col="gray",
+     xlab="Decision time", xlim=c(0,max(latencies)),
+     main=paste("Top responses (",as.numeric(topprop),
+          ") m=",as.character(signif(mean(toprt),4)),
+          sep=""),las=1)
+botrt <- latencies[responses<0]
+botprop <- length(botrt)/nreps
+hist(botrt,col="gray",
+     xlab="Decision time",xlim=c(0,max(latencies)),
+     main=paste("Bottom responses (",as.numeric(botprop),
+          ") m=",as.character(signif(mean(botrt),4)),
+          sep=""),las=1)
+```
+
+## Chapter 4: Maximum Likelihood Parameter Estimation
+
+Listing 4.1
+
+```{r listing_4.1}
+
+rswald <- function(t, a, m, Ter) {
+  ans <- a/sqrt(2*pi*(t-Ter)^3)*exp(-(a-m*(t-Ter))^2/(2*(t-Ter)))
+}
+
+# The shifted Wald probability density function
+```
+
+Listing 4.2
+
+```{r listing_4.2}
+
+source("GCMpred.R")
+```
