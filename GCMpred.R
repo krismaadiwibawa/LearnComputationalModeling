@@ -17,7 +17,7 @@ GCMpred <- function(probe, exemplars, c, w) {
     dist[[length(dist)+1]] <- apply(as.array(ex), 1, function(x) sqrt(sum(w*(x-probe)^2)))
   }
   
-  sumsim <- lappy(dist, function(a) sum(exp(-c*a)))
+  sumsim <- lapply(dist, function(a) sum(exp(-c*a)))
   
   r_prob <- unlist(sumsim)/sum(unlist(sumsim))
   
