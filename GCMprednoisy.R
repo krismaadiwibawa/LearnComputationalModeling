@@ -1,4 +1,15 @@
+# This implements a version of the General Context Model (GCM) for
+#   categorization, specifically modified to include perceptual or decision
+#   noise and a response bias.
+
 GCMprednoisy <- function(probe, exemplars, c, w, sigma, b){
+  
+  # sigma = The standard deviation (SD) of noise. The stochasticity parameter
+  #         that controls the amount of Gaussian noise in the decision process.
+  
+  # b = The response bias parameter.
+  #     Represents a preference for one category over the other, independent of
+  #     the stimulus evidence.
   
   # calculate likelihod of N_A `A' responses out of N given parameter c
   # 'stim' is a single vector representing the stimulus to be categorised
@@ -25,7 +36,19 @@ GCMprednoisy <- function(probe, exemplars, c, w, sigma, b){
   
   r_prob <- c(0,0)
   r_prob[1] <- pnorm(sumsim[1]-sumsim[2]-b,sd=sigma)
+  # This line calculates the probability of choosing Category A (r_prob[1])
+  #   using the cumulative distribution function of the Normal distribution
+  #   (pnorm).
+  #
+  # The probability of choosing A is the probability that the noisy decision
+  #   evidence exceeds a threshold.
+  #
+  # −b: A constant bias. If b>0, the net evidence must be higher to choose A
+  #     (i.e., it biases the response toward B). If b<0, it biases the response
+  #     toward A.
   r_prob[2] <- 1 - r_prob[1]
   return(r_prob)
+  
+
   
 }
