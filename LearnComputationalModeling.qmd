@@ -289,3 +289,182 @@ w[3] <- (1-sum(w[1:2]))*theta[4]
 w[4] <- (1-sum(w[1:3]))
 print(w)
 ```
+
+## Chapter 5: Combining Information from Multiple Participants
+
+Listing 5.1
+
+```{r listing_5.1_5.2}
+
+# This R code is a comprehensive simulation and analysis script used in computational modeling, specifically focusing on Reaction Time (RT) data.
+
+# It demonstrates two distinct methods for estimating the parameters of a Shifted Weibull Distribution—a common model for RT distributions—and compares their results:
+#
+#    1. Quantile Averaging (Aggregate Fit): Fitting the model to the average quantiles across all subjects.
+#
+#    2. Maximum Likelihood Estimation (Individual Fit): Fitting the model to each individual subject's raw RT data.
+
+# This section creates synthetic data for a hypothetical experiment to test the fitting procedures.
+#dat <- read.csv(file="rt_data.csv") # uncomment this if you read in data
+nsubj <- 30 # Number of simulated participants
+nobs <- 20 # Number of observations (trials) per participant
+q_p <- c(.1,.3,.5,.7,.9) # Quantiles to be calculated (10th, 30th, ..., 90th percentile)
+
+# The true underlying parameters for the Shifted Weibull distribution are generated for each of the 30 participants. This simulates the natural variability of human cognition (a hierarchical data structure).
+shift <- rnorm(nsubj,250,50) #Shift (τ): The minimum RT (or non-decision time).
+scale <- rnorm(nsubj,200,50) #Scale (λ): Related to the mean/median of the RT distribution.
+shape <- rnorm(nsubj,2,0.25) #Shape (k): Controls the skewness of the distribution.
+
+params <- rbind(shift,scale,shape)
+
+print(rowMeans(params)) # Prints the grand mean of the true parameters
+
+# The core data is generated using the rweibull function, which creates random numbers from the Weibull distribution.
+# rows are trials, columns are participants
+dat <- apply(params, 2, function(x) rweibull(nobs,shape=x[3],scale=x[2])+x[1])
+# Loops through each participant's set of parameters (columns of params).
+# This creates a synthetic RT data for each of 30 participants completing 20 trials.
+
+# calculate sample quantiles for each particpant
+kk <- apply(dat, 2, function(x) quantile(x, probs=q_p))
+# kk is a matrix where rows are the quantile percentiles (0.1, 0.3, etc.) and columns are participants.
+
+###########################################################################################
+## FITTING VIA QUANTILE AVERAGING #########################################################
+###########################################################################################
+# This method simplifies the estimation by fitting the model to the average behavior across all participants.
+
+# average the quantiles
+vinq <- rowMeans(kk)
+# The average of the 30 columns in kk is taken, resulting in a single vector (vinq) of 5 average quantiles.
+
+# fit the shifted Weibull to averaged quantiles
+# This function defines the cost to be minimized. It is a Least Squares approach, minimizing the difference between the predicted quantiles and the average empirical quantiles (vinq).
+weib_qdev <- function(x,q_emp, q_p){
+  if (any(x<=0)){
+    return(10000000)
+  }
+  q_pred <- qweibull(q_p,shape=x[3],scale=x[2])+x[1] #gives the quantiles from a weibull distribution of a certain shape and scale
+  dev <- sqrt(mean((q_pred-q_emp)^2)) # This is the least-square, we want to minimize this.
+}
+
+res_quantaveraging <- optim(c(225,225,1),
+             function(x) weib_qdev(x, vinq, q_p))
+# An initial guess/starting values c(225, 225, 1) is provided.
+# optim() finds the single set of parameters that minimizes the RMSD between the predicted and averaged observed quantiles.
+
+print(res_quantaveraging$par)
+
+
+#########################################################################################
+## FITTING INDIVIDUAL PARTICIPANTS ######################################################
+#########################################################################################
+# This method uses Maximum Likelihood Estimation (MLE) to fit the Shifted Weibull to each individual participant's 20 raw RTs.
+
+# This function is the Negative Log-Likelihood (NLL), or, more accurately, the Deviance (−2×LogLikelihood), which is minimized by the optimizer.
+weib_deviance <- function(x,rts){
+  if (any(x<=0) || any(rts<x[1])){
+    return(10000000)
+  }
+  likel <- dweibull(rts-x[1],shape=x[3],scale=x[2])
+  dev <- sum(-2*log(likel))
+}
+# dweibull(rts - x[1], ...): Calculates the likelihood of each RT, shifted by the parameter x[1].
+# The constraint rts < x[1] is crucial: the Shift parameter τ is the non-decision time, so the predicted distribution must not start after the earliest observed RT.
+
+res_fitind <- apply(dat,2,function(a) optim(c(100,225,1), function(x) weib_deviance(x, a)))
+# apply(dat, 2, ...): Loops through each column (participant) in the raw data matrix dat.
+# A separate optim() call is run for each of the 30 participants, using their 20 RTs (a).
+
+
+# Extract parameter estimates and put in to a matrix
+# This block extracts the final parameter estimates from the list of 30 optimization results (res) and stores them in a matrix (parest).
+# It then calculates the mean and standard deviation of the estimated parameters across all 30 participants.
+parest <- matrix(
+  unlist(lapply(res_fitind, function(x) x$par)),
+  ncol=3, byrow=T)
+
+print(colMeans(parest)) # mean parameter estimates
+print(apply(parest,2,sd)) # SD of estimates
+
+# note correlations between parameter estimates
+
+# -----
+# The primary purpose of the entire script is to compare the mean parameter estimates from the Aggregate Fit (Quantile Averaging) with the Mean Parameter Estimates from the Individual Fits (MLE) to see how well each method recovers the true population means (which are known from the simulation).
+```
+
+Listing 5.3
+
+```{r listing_5.3}
+library("ggplot2")
+# generate some data
+set.seed(1540614451)
+
+N <- 1000
+pShort <- 0.3
+
+genpars <- list(c(100,10),
+                c(150,20))
+
+# we assume equal sampling probability for the three distributions
+whichD <- sample(c(1,2),N, replace=TRUE, prob=c(pShort, 1-pShort))
+
+dat <- sapply(whichD, function(x) 
+  rnorm(1,genpars[[x]][1],genpars[[x]][2]))
+# After genpars[[x]] returns a vector, the single brackets [...] are used to select elements from that vector:
+# genpars[[x]][1]: Selects the first element of the vector, which is the mean (μ) parameter for the rnorm() function.
+# genpars[[x]][2]: Selects the second element of the vector, which is the standard deviation (σ) parameter for the rnorm() function.
+
+# function needed in EM
+weighted.sd <- function(x,w,mu=mean(x)){
+  wvar <- sum(w*(x-mu)^2)/
+    sum(w)
+  return(sqrt(wvar))
+}
+
+# guess parameters
+mu1 <- mean(dat,1)*0.8
+mu2 <- mean(dat, 1)*1.2
+sd1 <- sd(dat)
+sd2 <- sd(dat)
+ppi <- 0.5
+oldppi <- 0
+
+while (abs(ppi-oldppi)>.00001){ #* \label{line:MultipleParticipants:gmmloop}  *\#
+  
+  oldppi <- ppi
+  
+  # E step
+  resp <- ppi*dnorm(dat,mu2,sd2)/
+    ((1-ppi)*dnorm(dat,mu1,sd1) + ppi*dnorm(dat,mu2,sd2))
+  
+  # M step
+  mu1 <- weighted.mean(dat,1-resp)
+  mu2 <- weighted.mean(dat,resp)
+  
+  sd1 <- weighted.sd(dat,1-resp,mu1)
+  sd2 <- weighted.sd(dat,resp,mu2)
+  
+  ppi <- mean(resp)
+  print(ppi)
+  
+}
+
+df <- data.frame(rt=dat)
+
+#pdf(file="GMMexample.pdf", width=5, height=4)
+ggplot(df, aes(x = rt)) + 
+  geom_histogram(aes(y = ..density..),colour = "black", fill = "white", 
+                 binwidth = 3) + 
+  stat_function(fun = function(k) (1-ppi)*dnorm(k,mu1,sd1)) +
+  stat_function(fun = function(k) ppi*dnorm(k,mu2,sd2)) +
+  xlab("RT (ms)") + ylab("Density")
+#dev.off()
+
+# mixtools for comparison
+
+library(mixtools) # you'll need to install this library
+myEM <- normalmixEM( dat, mu = c(1,4),
+                     sigma=c(sd(dat),sd(dat)))
+
+```
