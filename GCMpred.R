@@ -71,7 +71,7 @@ GCMpred <- function(probe, exemplars, c, w) {
   #   using the ratio rule (specifically, Luce's choice rule)
   #   Mathematically: P(A) = Activation_A / (Activation_A + Activation_B)
   #                        = Summed(Similarity Probe,Exemplar_A) /
-  #                          (Summed(Similarity Probe,Exemplar_A) +
-  #                          Summed(Similarity Probe,Exemplar_B))
+  #                          (Summed(Similarity Probe&Exemplar_A) +
+  #                          Summed(Similarity Probe&Exemplar_B))
   
 }
