@@ -400,13 +400,15 @@ library("ggplot2")
 # generate some data
 set.seed(1540614451)
 
-N <- 1000
-pShort <- 0.3
+# This is the simulation set up
+N <- 1000 # how many data points
+pShort <- 0.3 # the probability that a saccade is express saccade
 
-genpars <- list(c(100,10),
-                c(150,20))
+genpars <- list(c(100,10), # these are the parameters of the two gaussian distribution
+                c(150,20)) # namely, the mean and SD
 
-# we assume equal sampling probability for the three distributions
+# we assume equal sampling probability for the three (two?) distributions
+# I think the above comment is a typo because if pShort is not 0.5 then it is not an equal probability sampling
 whichD <- sample(c(1,2),N, replace=TRUE, prob=c(pShort, 1-pShort))
 
 dat <- sapply(whichD, function(x) 
@@ -414,41 +416,80 @@ dat <- sapply(whichD, function(x)
 # After genpars[[x]] returns a vector, the single brackets [...] are used to select elements from that vector:
 # genpars[[x]][1]: Selects the first element of the vector, which is the mean (μ) parameter for the rnorm() function.
 # genpars[[x]][2]: Selects the second element of the vector, which is the standard deviation (σ) parameter for the rnorm() function.
+# dat is a collection of N saccades, each saccade comes from either the first gaussian distribution or the second gaussian distribution 
 
-# function needed in EM
+# function needed in EM (Expectation Maximization)
+# This is analoguous to the built-in R function weighted.mean, and allows us to calculate a sample standard deviation where different data points are given different weights
 weighted.sd <- function(x,w,mu=mean(x)){
   wvar <- sum(w*(x-mu)^2)/
     sum(w)
   return(sqrt(wvar))
 }
+# Why this function is necessary?
+# 1. Partial Membership: In the "M-step" (Maximization), we need to update the standard deviation for each Gaussian. But we shouldn't use the whole dataset equally. A data point that has a 90% probability of belonging to Group 1 should have a large influence on Group 1's standard deviation, and very little influence on Group 2's.
+# 2. The Formula: The standard formula for variance is sum((x - mu)^2) / length(x). In a weighted version, we replace the count N with the sum of the weights, and we multiply each squared deviation by its specific weight: um(w * (x - mu)^2) / sum(w)
+# 3. R's Limitations: While R has a built-in weighted.mean(), it does not have a built-in weighted.sd(). To update the parameters of your two Gaussians correctly during each iteration of the loop, you have to manually calculate this weighted variance.
 
-# guess parameters
-mu1 <- mean(dat,1)*0.8
-mu2 <- mean(dat, 1)*1.2
+# guess parameters (as the starting value for iteration)
+mu1 <- mean(dat,1)*0.5
+mu2 <- mean(dat, 1)*1.5
+# The means are simply estimated from the overall sample mean (shifted a little either way so that they are not identical), and the standard deviation of each distribution is simply set to the sample standard deviation. 
 sd1 <- sd(dat)
 sd2 <- sd(dat)
+# We initialize the mixing proportion (the proportion of data thought to belong to the second distribution, namely ppi), to 0.5. We also initialize oldppi, which will be used to keep track of ppi from the previous iteration.
 ppi <- 0.5
 oldppi <- 0
 
-while (abs(ppi-oldppi)>.00001){ #* \label{line:MultipleParticipants:gmmloop}  *\#
+iter <- 0
+
+# The following while loop iteratively applies the expectation and maximization steps until the change in ppi between the current run through the loop and the previous one (oldppi) is below a treshold value.
+while (abs(ppi-oldppi)>.00001){ # we want the iteration to stop only when the absolute difference (between current iteration ppi and previous iteration ppi) is less than .00001
   
   oldppi <- ppi
   
-  # E step
+  # Within the loop, we first apply the expectation step and calculate the probability that each data point in dat comes from the second (vs. first) Gaussian distribution.
+  # Note that this calculation takes ppi into account, as we not only want to know the probability of a data point given each distribution, but must also take into account the base probability (in Bayesian language:the prior) of each distribution.
+  
+  # The Expectation (E) step is essentially a "soft assignment" phase. Because we don't know which data points belong to which distribution, we use our current best guess of the parameters (μ, σ, and ppi) to calculate the probability that each point belongs to Group 2.
+  # If we were doing a "Hard" assignment (like K-means clustering), we would simply say, "This point belongs to Group 1." But in GMMs, data points in the middle could belong to either. The E-step calculates a responsibility (resp), which is a value between 0 and 1.
+  # --- If resp=0.9, there is a 90% chance the point belongs to Distribution 2.
+  # --- If resp=0.5, the point is exactly in the middle and the model is "unsure."
+  
+  # E step ("Who belongs where?")
+  # The loop enters the E-step. The model looks at every single data point and asks:
+  # --- "Given my current guess of where the bells are, what is the probability that this specific data point belongs to Bell #2?"
+  # It generates a list of probabilities (resp ---> responsibility). Some points get a 0.99 (definitely Bell 2), some get a 0.01 (definitely Bell 1), and some in the middle get a 0.5.
+  # This is applied to the vector dat (N data points) all at once and produces one result vector (of N data points)
+  # resp is the posterior probability!
   resp <- ppi*dnorm(dat,mu2,sd2)/
     ((1-ppi)*dnorm(dat,mu1,sd1) + ppi*dnorm(dat,mu2,sd2))
+  # (do you notice this is actually bayes theorem?)
+  # ppi (Prior): This is your current "base rate" belief about how common the second distribution is (e.g., "I think 50% of all data belongs to Group 2").
+  # dnorm(dat, mu2, sd2) (Likelihood): This is the probability of seeing that specific data point if it came from the second distribution.
+  # The Denominator (Total Evidence): This is the sum of (Prior × Likelihood) for both groups. It represents the total probability of seeing that data point under the entire model.
+  
+  # Then, we apply the maximization step and obtain the maximum likelihood estimates of the parameters of the two Gaussians given the data and the membership probabilities in resp. Because our distributions are Gaussian, we can quickly calculate estimates of the parameters of the two Gaussians, we can quickly calculate estimates of mu and sd by taking the mean and standard deviation of the samples. However, the mean and standard deviation calculations must be weighted by the probability that each score is in each distribution; accordingly, we use the built-in weighted.mean function, and the function weighted.sd we defined earlier.
   
   # M step
+  # using the posterior probabilities (resp of each data point), we generate new mu1, mu2, sd1, sd2 
   mu1 <- weighted.mean(dat,1-resp)
   mu2 <- weighted.mean(dat,resp)
   
   sd1 <- weighted.sd(dat,1-resp,mu1)
   sd2 <- weighted.sd(dat,resp,mu2)
   
-  ppi <- mean(resp)
-  print(ppi)
+  iter <- iter + 1
+  
+  # Finally, we recalculate the mixing proportion in ppi by simply taking the average of the probabilities in resp.
+  
+  ppi <- mean(resp) # This is the new Prior for the next round. You are basically saying: "The average of all my individual posterior certainties is now my new 'base rate' for the whole group."
+  print(data.frame(ppi, mu1, mu2, sd1, sd2, iter))
   
 }
+
+  # Once the loop has terminated, the variables mu1, mu2, sd1, and sd2 will hold the final estimates of the parameters of the two Gaussian distributions, and ppi and resp hold information about the probability that data (or a particular data point) belonging to each distribution.
+
+  # If ppi is 0.72, the model believes that 72% of your saccade data belongs to the second Gaussian distribution (N(150,20)), and the remaining 30% belongs to the first distribution (N(100,10)).
 
 df <- data.frame(rt=dat)
 
@@ -461,10 +502,24 @@ ggplot(df, aes(x = rt)) +
   xlab("RT (ms)") + ylab("Density")
 #dev.off()
 
-# mixtools for comparison
 
+#############################################################################
+### The above method is manual. #############################################
+### Below is a pre-built R package to do the same thing, called mixtools. ###
+#############################################################################
+
+# mixtools for comparison
 library(mixtools) # you'll need to install this library
 myEM <- normalmixEM( dat, mu = c(1,4),
                      sigma=c(sd(dat),sd(dat)))
+
+cat("updated ppi-dist1: ", myEM$lambda[[1]],"\n",
+    "updated ppi-dist2: ", myEM$lambda[[2]], "\n",
+    "mu1: ",myEM$mu[[1]], " / sd1: ", myEM$sigma[[1]], "\n",
+    "mu2: ",myEM$mu[[2]], " / sd2: ", myEM$sigma[[2]],
+    sep="")
+
+
+
 
 ```
