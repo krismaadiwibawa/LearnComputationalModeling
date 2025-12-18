@@ -180,6 +180,9 @@ likelihood <- dbinom(N_A, size=N, prob=preds[1])
 
 # The term likelihood is used because we want to calculate what is the likelihood of the parameter values we used above, GIVEN the N_A we observe in the collected data. In the parameter estimation of maximum likelihood method, we are looking for the parameter values that return the highest likelihood, given N_A (the data we collected)
 
+cat("prediction category A: ", preds[[1]], "\n",
+    "prediction category B: ", preds[[2]], "\n",
+    "likelihood of the data: ", likelihood, sep="")
 ```
 
 Listing 4.4
@@ -458,7 +461,7 @@ while (abs(ppi-oldppi)>.00001){ # we want the iteration to stop only when the ab
   # E step ("Who belongs where?")
   # The loop enters the E-step. The model looks at every single data point and asks:
   # --- "Given my current guess of where the bells are, what is the probability that this specific data point belongs to Bell #2?"
-  # It generates a list of probabilities (resp ---> responsibility). Some points get a 0.99 (definitely Bell 2), some get a 0.01 (definitely Bell 1), and some in the middle get a 0.5.
+  # It generates a list of probabilities (resp is abbreviation of responsibility). Some points get a 0.99 (definitely Bell 2), some get a 0.01 (definitely Bell 1), and some in the middle get a 0.5.
   # This is applied to the vector dat (N data points) all at once and produces one result vector (of N data points)
   # resp is the posterior probability!
   resp <- ppi*dnorm(dat,mu2,sd2)/
