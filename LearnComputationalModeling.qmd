@@ -446,7 +446,7 @@ oldppi <- 0
 iter <- 0
 
 # The following while loop iteratively applies the expectation and maximization steps until the change in ppi between the current run through the loop and the previous one (oldppi) is below a treshold value.
-while (abs(ppi-oldppi)>.00001){ # we want the iteration to stop only when the absolute difference (between current iteration ppi and previous iteration ppi) is less than .00001
+while (abs(ppi-oldppi)>.00001){ # we want the iteration to stop only when the absolute difference (between current iteration ppi and previous iteration ppi) is equal to .00001
   
   oldppi <- ppi
   
@@ -481,18 +481,18 @@ while (abs(ppi-oldppi)>.00001){ # we want the iteration to stop only when the ab
   sd1 <- weighted.sd(dat,1-resp,mu1)
   sd2 <- weighted.sd(dat,resp,mu2)
   
-  iter <- iter + 1
+  iter <- iter + 1 # I added this to mark each iteration
   
   # Finally, we recalculate the mixing proportion in ppi by simply taking the average of the probabilities in resp.
   
-  ppi <- mean(resp) # This is the new Prior for the next round. You are basically saying: "The average of all my individual posterior certainties is now my new 'base rate' for the whole group."
+  ppi <- mean(resp) # This is the new Prior for the next round. You are basically saying: "The average of all my individual posterior certainties is now my new 'base rate' (i.e. new prior) for the whole group."
   print(data.frame(ppi, mu1, mu2, sd1, sd2, iter))
   
 }
 
   # Once the loop has terminated, the variables mu1, mu2, sd1, and sd2 will hold the final estimates of the parameters of the two Gaussian distributions, and ppi and resp hold information about the probability that data (or a particular data point) belonging to each distribution.
 
-  # If ppi is 0.72, the model believes that 72% of your saccade data belongs to the second Gaussian distribution (N(150,20)), and the remaining 30% belongs to the first distribution (N(100,10)).
+  # If ppi is 0.72, the model believes that 72% of your saccade data belongs to the second Gaussian distribution (mu=150, sd=20)), and the remaining 28% belongs to the first distribution (mu=100, sd=10)).
 
 df <- data.frame(rt=dat)
 
@@ -516,6 +516,7 @@ library(mixtools) # you'll need to install this library
 myEM <- normalmixEM( dat, mu = c(1,4),
                      sigma=c(sd(dat),sd(dat)))
 
+# show the result
 cat("updated ppi-dist1: ", myEM$lambda[[1]],"\n",
     "updated ppi-dist2: ", myEM$lambda[[2]], "\n",
     "mu1: ",myEM$mu[[1]], " / sd1: ", myEM$sigma[[1]], "\n",
@@ -592,7 +593,7 @@ par(mfrow=c(1,2))
 plot(colMeans(spcdat), ylim=c(0,1), type="b",
      xlab="Serial Position", ylab="Proportion Correct", main=NULL)
 
-kmres <- kmeans(spcdat, centers=3, nstart=10) #* \label{line:MultipleParticipants:runkmeans}  *\#
+kmres <- kmeans(spcdat, centers=3, nstart=10)
 matplot(t(kmres$centers), type="b", ylim=c(0,1), 
         xlab="Serial Position", ylab="Proportion Correct")
 #dev.off()
