@@ -10,7 +10,9 @@ editor: visual
 
 ## Chapter 2: From Words to Models
 
-### 2.2.2 The Random Walk Model
+### 2.2 Building a Simulation
+
+#### 2.2.2 The Random Walk Model
 
 Listing 2.1 A simple random-walk model
 
@@ -93,7 +95,7 @@ hist(botrt, col="gray",
                 sep=""), las=1)
 ```
 
-### 2.2.4 Trial-to-Trial Variability in the Random-Walk Model
+#### 2.2.4 Trial-to-Trial Variability in the Random-Walk Model
 
 Listing 2.4 A random-walk model with trial-to-trial variability
 
@@ -182,7 +184,9 @@ hist(botrt,col="gray",
 
 ## Chapter 3: Basic Parameter Estimation Techniques
 
-### 3.3.2 Estimating Regression Parameters
+### 3.3 Least-Squares Estimation in a Familiar Context
+
+#### 3.3.2 Estimating Regression Parameters
 
 Listing 3.2 R code to generate synthetic data and compute regression parameters in two ways
 
@@ -274,7 +278,9 @@ Conventional regression analysis using lm()
 lm(data[,1] ~ data[,2])
 ```
 
-### 3.5.1 Bootstraping
+### 3.5 Variability in Parameter Estimates 
+
+#### 3.5.1 Bootstraping
 
 Listing 3.3 R code to fit power model of forgetting data from Carpenter et al. (2008)
 
@@ -416,7 +422,9 @@ for (i in c(1:dim(bsparms)[2])) {
 
 ## Chapter 4: Maximum Likelihood Parameter Estimation
 
-### 4.3.1 Probability Functions Specified by the Psychological Model
+### 4.3 Defining a Probability Distribution
+
+#### 4.3.1 Probability Functions Specified by the Psychological Model
 
 Listing 4.1
 
@@ -437,7 +445,7 @@ rswald <- function(t, a, m, Ter) {
 # In this case, the probability density function is itself the model of behavior and no further assumptions (or intermediary) functions are needed to relate the model to the data
 ```
 
-### 4.3.2 Probability Functions via Data Models
+#### 4.3.2 Probability Functions via Data Models
 
 Listing 4.3 Code for obtaining predicted probabilities of responses from GCM
 
@@ -666,7 +674,7 @@ for (w1 in c(0.25,0.5,0.75)){
        cat("Convergence status: ", fitres$convergence, 
           " (0 = Success)\n")
        cat("Final Deviance (Value): ", fitres$value, "\n")
-       cat("Final Parameters (theta)", fitres$par, "\n")
+       cat("Final Parameters (theta): ", fitres$par, "\n")
        cat("-----------------------------------\n")
       
       if (fitres$value<bestfit){
@@ -705,16 +713,17 @@ cat("Best-Fitting Parameters", "\n",
 
 ## Chapter 5: Combining Information from Multiple Participants
 
-Listing 5.1
+### 5.3 Fitting Aggregate Data
+
+Listing 5.1 Fitting the Weibull to response times from multiple participants
 
 ```{r listing_5.1_5.2}
+rm(list=ls())
+# This demonstrates two distinct methods for estimating the parameters of a Shifted Weibull Distribution—a common model for RT distributions—and compares their results:
 
-# This R code is a comprehensive simulation and analysis script used in computational modeling, specifically focusing on Reaction Time (RT) data.
-
-# It demonstrates two distinct methods for estimating the parameters of a Shifted Weibull Distribution—a common model for RT distributions—and compares their results:
-#
 #    1. Quantile Averaging (Aggregate Fit): Fitting the model to the average quantiles across all subjects.
-#
+
+#    (in the next code block)
 #    2. Maximum Likelihood Estimation (Individual Fit): Fitting the model to each individual subject's raw RT data.
 
 # This section creates synthetic data for a hypothetical experiment to test the fitting procedures.
@@ -766,9 +775,14 @@ res_quantaveraging <- optim(c(225,225,1),
 # An initial guess/starting values c(225, 225, 1) is provided.
 # optim() finds the single set of parameters that minimizes the RMSD between the predicted and averaged observed quantiles.
 
-print(res_quantaveraging$par)
+print(res_quantaveraging)
+```
 
+### 5.4 Fitting Individual Participants
 
+Listing 5.2 Fitting the Weibull to response times from individual participants
+
+```{r listing_5.2}
 #########################################################################################
 ## FITTING INDIVIDUAL PARTICIPANTS ######################################################
 #########################################################################################
@@ -806,10 +820,15 @@ print(apply(parest,2,sd)) # SD of estimates
 # The primary purpose of the entire script is to compare the mean parameter estimates from the Aggregate Fit (Quantile Averaging) with the Mean Parameter Estimates from the Individual Fits (MLE) to see how well each method recovers the true population means (which are known from the simulation).
 ```
 
-Listing 5.3
+### 5.5 Fitting Subgroups of data and Individual Differences
+
+#### 5.5.1 Mixture Modeling
+
+Listing 5.3 Fitting a mixture of Gaussians to a simulated bimodal distribution of saccade latencies
 
 ```{r listing_5.3}
 library("ggplot2")
+rm(list=ls())
 # generate some data
 set.seed(1540614451)
 
@@ -841,7 +860,7 @@ weighted.sd <- function(x,w,mu=mean(x)){
 # Why this function is necessary?
 # 1. Partial Membership: In the "M-step" (Maximization), we need to update the standard deviation for each Gaussian. But we shouldn't use the whole dataset equally. A data point that has a 90% probability of belonging to Group 1 should have a large influence on Group 1's standard deviation, and very little influence on Group 2's.
 # 2. The Formula: The standard formula for variance is sum((x - mu)^2) / length(x). In a weighted version, we replace the count N with the sum of the weights, and we multiply each squared deviation by its specific weight: um(w * (x - mu)^2) / sum(w)
-# 3. R's Limitations: While R has a built-in weighted.mean(), it does not have a built-in weighted.sd(). To update the parameters of your two Gaussians correctly during each iteration of the loop, you have to manually calculate this weighted variance.
+# 3. R's Limitations: While R has a built-in weighted.mean(), it does not have a built-in weighted.sd(). To update the parameters of our two Gaussians correctly during each iteration of the loop, you have to manually calculate this weighted variance.
 
 # guess parameters (as the starting value for iteration)
 mu1 <- mean(dat,1)*0.5
@@ -877,7 +896,7 @@ while (abs(ppi-oldppi)>.00001){ # we want the iteration to stop only when the ab
   resp <- ppi*dnorm(dat,mu2,sd2)/
     ((1-ppi)*dnorm(dat,mu1,sd1) + ppi*dnorm(dat,mu2,sd2))
   # (do you notice this is actually bayes theorem?)
-  # ppi (Prior): This is your current "base rate" belief about how common the second distribution is (e.g., "I think 50% of all data belongs to Group 2").
+  # ppi (Prior): This is our current "base rate" belief about how common the second distribution is (e.g., "I think 50% of all data belongs to Group 2").
   # dnorm(dat, mu2, sd2) (Likelihood): This is the probability of seeing that specific data point if it came from the second distribution.
   # The Denominator (Total Evidence): This is the sum of (Prior × Likelihood) for both groups. It represents the total probability of seeing that data point under the entire model.
   
@@ -902,7 +921,7 @@ while (abs(ppi-oldppi)>.00001){ # we want the iteration to stop only when the ab
 
   # Once the loop has terminated, the variables mu1, mu2, sd1, and sd2 will hold the final estimates of the parameters of the two Gaussian distributions, and ppi and resp hold information about the probability that data (or a particular data point) belonging to each distribution.
 
-  # If ppi is 0.72, the model believes that 72% of your saccade data belongs to the second Gaussian distribution (mu=150, sd=20)), and the remaining 28% belongs to the first distribution (mu=100, sd=10)).
+  # If ppi is 0.72, the model believes that 72% of our saccade data belongs to the second Gaussian distribution (mu=150, sd=20)), and the remaining 28% belongs to the first distribution (mu=100, sd=10)).
 
 df <- data.frame(rt=dat)
 
@@ -934,10 +953,12 @@ cat("updated ppi-dist1: ", myEM$lambda[[1]],"\n",
     sep="")
 ```
 
-Listing 5.4
+#### 5.5.2 K-Means Clustering
+
+Listing 5.4 K-Means analysis of free recall data
 
 ```{r listing_5.4}
-
+rm(list=ls())
 # This code is a simulation and analysis of Serial Position Curves (SPCs) in a memory task (like free recall). It simulates how different types of people remember items from a list and then uses unsupervised machine learning to see if it can "discover" those groups without being told who is who.
 
 # Read in the data
