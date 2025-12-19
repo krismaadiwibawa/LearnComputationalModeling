@@ -15,88 +15,113 @@ editor: visual
 Listing 2.1 A simple random-walk model
 
 ```{r listing_2.1}
+##################################
+### A Simple Random-Walk Model ###
+##################################
+nreps <- 10000
+# Number of random-walks (10000 separate decisions)
+nsamples <- 2000
+# Each decision can last up to 2000 small time-steps of evidence accumulation
 
-#random-walk model
-nreps <- 10000 #number of random-walks (decisions)
-nsamples <- 2000 #number of times that evidence is being sampled for each decision
+drift <- 0.0 # Noninformative stimulus. This is the "pull" toward one choice or the other. Drift = 0.0 means the stimulus is completely neutral (like a fair coin), in other words, the starting point is exactly in the middle between 'upper' and 'lower' decision criterion.
+sdrw <- 0.3  # Noise in the evidence as standard deviation. Higher values make the evidence accumulation jump around wildly; lower values make the path of evidence accumulation smoother
+criterion <- 3 # Response criterion (the distance of the 'upper' and 'lower' boundaries from origin). The first one to be hit wins the decision (e.g. hits upper = choice A; hits lower choice B).
 
-drift <- 0.0 #noninformative stimulus
-             #drift rate: amount of evidence available during sampling
-sdrw <- 0.3  #noise in the evidence as standard deviation
-criterion <- 3 #response criterion (the distance of the 2 boundaries from origin)
+# These are variables we are going to fill with values later
+latencies <- rep(0, nreps) # vector containing zeros
+responses <- rep(0, nreps) # vector containing zeros
+evidence <- matrix(0, nreps, nsamples+1) # a matrix containing zeros
 
-latencies <- rep(0, nreps) #vector containing zeros
-responses <- rep(0, nreps) #vector containing zeros
-evidence <- matrix(0, nreps, nsamples+1) #a matric containing zeros
+# Filling the matrix with (simulated) data
 for (i in c(1:nreps)) {
-  evidence[i,] <- cumsum(c(0, rnorm(nsamples, drift, sdrw))) #evidence accumulation
-  p <- which(abs(evidence[i,])>criterion)[1] #the step at which decision is made (the column)
+  evidence[i,] <- cumsum(c(0, rnorm(nsamples, drift, sdrw))) # evidence accumulation
+  p <- which(abs(evidence[i,])>criterion)[1] # the step in the evidence accumulation at which decision is made (the "column" where the accumulated evidence satisfies the criterion treshold)
   responses[i] <- sign(evidence[i,p]) #return +1 or -1
   latencies[i] <- p
 }
 
-#View(evidence)
+View(evidence)
 ```
 
 Listing 2.2 Plot up to 5 random-walk paths
 
 ```{r listing_2.2, fig.width=10, fig.height=6}
 
-#plot up to 5 random-walk paths
-tbpn <- min(nreps, 5) #to-be-plotted-number
-plot(1:max(latencies[1:tbpn])+10, # create x-axis as needed (what the longest latency?
-     type="n", #create empty plot
-     las=1, #make the y-axis labels horizontal
-     ylim=c(-criterion-.5, criterion+.5), #set y-axis limit, give extra room above and below criterion
+######################################
+### plot up to 5 random-walk paths ###
+######################################
+
+dev.new(width = 5, height = 3.75, noRStudioGD = TRUE)
+
+tbpn <- min(nreps, 5) # to-be-plotted-number
+plot(1:max(latencies[1:tbpn])+10, # create x-axis only as far as the longest latency
+     type="n", # create an empty plot
+     las=1, # make the y-axis labels horizontal
+     ylim=c(-criterion-.5, criterion+.5), # set y-axis limit, give extra room (.5) above and below criterion 
      ylab="Evidence", xlab="Decision time")
 for (i in c(1:tbpn)) {
-       lines(evidence[i, 1:(latencies[i]-1)]) #this is the values in row i, which is the evidence sampling. -1 means plot the line just before the decision
+       lines(evidence[i, 1:(latencies[i]-1)]) # this is the values in row i, which is the evidence sampling. -1 means plot the line just before the decision. ("Show these values linked with lines")
 }
-abline(h=c(criterion, -criterion), lty="dashed") #create a dashed line for criterion (upper & lower decision treshold)
+abline(h=c(criterion, -criterion), lty="dashed") # create a dashed horizontal line for criterion (upper & lower decision treshold)
 ```
 
 Listing 2.3 Plot distribution of response latencies from random-walk
 
-```{r listing_2.3, fig.width=10, fig.height=8}
+```{r listing_2.3}
 
-#plot histogram latencies
-par(mfrow=c(2,1)) #split the plotting area into 2 rows and 1 column
-toprt <- latencies[responses>0] #latencies that corresponds to +1
-topprop <- length(toprt)/nreps #proportion of top responses relative to all trials
+################################
+### plot histogram latencies ###
+################################
+dev.new(width = 4, height = 6, noRStudioGD = TRUE)
+
+par(mfrow=c(2,1)) # split the plotting area into 2 rows and 1 column
+
+toprt <- latencies[responses>0] # latencies that corresponds to +1
+topprop <- length(toprt)/nreps # proportion of top responses relative to all decisions
 hist(toprt, col="gray",
      xlab="Decision time", xlim=c(0, max(latencies)),
      main=paste("Top responses (", as.numeric(topprop),
      ") m=", as.character(signif(mean(toprt),4)),
-     sep=""), las=1)
-botrt <- latencies[responses<0] #latencies that corresponds to -1
+     sep=""), las=1) # las=1 makes all axis labels horizontal
+
+botrt <- latencies[responses<0] # latencies that corresponds to -1
 botprop <- length(botrt)/nreps
 hist(botrt, col="gray",
      xlab="Decision time", xlim=c(0, max(latencies)),
      main=paste("Bottom responses (", as.numeric(botprop),
-                ") m=", as.character(signif(mean(botrt), 4))
-                )
-     )
+                ") m=", as.character(signif(mean(botrt), 4)),
+                sep=""), las=1)
 ```
+
+### 2.2.4 Trial-to-Trial Variability in the Random-Walk Model
 
 Listing 2.4 A random-walk model with trial-to-trial variability
 
 ```{r listing_2.4}
 
-#random walk model with unequal latencies between responses classes
+##########################################################################
+### random walk model with unequal latencies between responses classes ###
+##########################################################################
+
 nreps <- 1000
 nsamples <- 2000
 
-drift <- 0.03  # 0 = noninformative stimulus; >0 = informative
+drift <- 0.03 
+# 0 = noninformative stimulus; >0 = informative (not a fair coin; stimulus not neutral)
 sdrw <- 0.3
 criterion <- 3 
-t2tsd  <- c(0.0,0.025)
+t2tsd  <- c(0.00,0.025) # trial-to-trial standard deviation (trial-to-trial variability)
 
-latencies <- rep(0,nreps)
-responses <- rep(0,nreps)
-evidence <- matrix(0, nreps, nsamples+1) 
+# These are variables we are going to fill with values later
+latencies <- rep(0,nreps) # vector containing zeros
+responses <- rep(0,nreps) # vector containing zeros
+evidence <- matrix(0, nreps, nsamples+1) # a matrix containing zeros
+
 for (i in c(1:nreps)) { 
-  sp <- rnorm(1,0,t2tsd[1]) 
-  dr <- rnorm(1,drift,t2tsd[2]) 
+  sp <- rnorm(1,0,t2tsd[1]) # starting point
+  # Instead of always starting exactly at 0, each trial starts at a slightly different position based on a normal distribution. However, since t2tsd[1] is currently 0.0, the starting point is still effectively 0 for now.
+  dr <- rnorm(1,drift,t2tsd[2]) # drift rate
+  # Even though the average drift is 0.03, each specific trial gets its own unique drift rate based on a normal distribution. Some trials will have a "stronger" signal than others.
   evidence[i,] <- cumsum(c(sp,rnorm(nsamples,dr,sdrw))) 
   p <-  which(abs(evidence[i,])>criterion)[1]
   responses[i] <- sign(evidence[i,p])
@@ -108,23 +133,36 @@ Listing 2.5
 
 ```{r listing_2.5}
 
-#plot up to 5 random walk paths
-tbpn <- min(nreps,5)
+######################################
+### plot up to 5 random walk paths ###
+######################################
+
+dev.new(width = 7, height = 5, noRStudioGD = TRUE)
+
+par(mfrow=c(1,1))
+
+tbpn <- min(nreps,5) # to-be-plotted-number
 plot(1:max(latencies[1:tbpn])+10,type="n",las=1,
      ylim=c(-criterion-.5,criterion+.5),
      ylab="Evidence",xlab="Decision time")
 for (i in c(1:tbpn)) {
-  lines(evidence[i,1:(latencies[i]-1)])   
+  lines(evidence[i,1:(latencies[i]-1)])
 }
-abline(h=c(criterion,-criterion),lty="dashed")  
+abline(h=c(criterion,-criterion),lty="dashed")
 ```
 
 Listing 2.6
 
 ```{r listing_2.6}
 
-#plot histograms of latencies
+####################################
+### plot histograms of latencies ###
+####################################
+
+dev.new(width = 4, height = 6, noRStudioGD = TRUE)
+
 par(mfrow=c(2,1))
+
 toprt <- latencies[responses>0]
 topprop <- length(toprt)/nreps
 hist(toprt,col="gray",
@@ -132,6 +170,7 @@ hist(toprt,col="gray",
      main=paste("Top responses (",as.numeric(topprop),
           ") m=",as.character(signif(mean(toprt),4)),
           sep=""),las=1)
+
 botrt <- latencies[responses<0]
 botprop <- length(botrt)/nreps
 hist(botrt,col="gray",
@@ -141,26 +180,336 @@ hist(botrt,col="gray",
           sep=""),las=1)
 ```
 
+## Chapter 3: Basic Parameter Estimation Techniques
+
+### 3.3.2 Estimating Regression Parameters
+
+Listing 3.2 R code to generate synthetic data and compute regression parameters in two ways
+
+```{r listing_3.2}
+######################################################################
+### Creating functions to calculate models prediction (getregpred) ###
+### and to calculate the discrepancy (rmsd), which will be used in ###
+### the optimization                                               ###
+######################################################################
+rm(list=ls())
+
+# plot data and current predictions          
+getregpred <- function(parms,data) {
+  getregpred <- parms["b0"] + parms["b1"]*data[ ,2]
+  # This is basically the simple linear regression formula: Y = β0 + β1X
+  # getregpred (get regression prediction) is calculating Y (the prediction) by plugging in the parameter value of b0 and b1 into the model.
+  
+  current_rmsd <- sqrt(mean((getregpred - data[ ,1])^2))
+  
+  # wait with drawing a graph until key is pressed
+  par(ask=TRUE) # we force R to wait until we hit enter before it shows the next graphic
+  plot(data[ ,2], type="n", las=1, ylim=c(-2,2), xlim=c(-2,2), xlab="X", ylab="Y",
+       main=paste("Y = b0 + (b1 x X)", "\n", "\n",
+                  "b0 = ", round(parms["b0"], 3), "    ",
+                  "b1 = ", round(parms["b1"], 3), "    ",
+                  "RMSD = ", round(current_rmsd, 3)))
+  # type="n" creates a blank plot
+  par(ask=FALSE)
+  points (data[ ,2], data[ ,1], pch=21, bg="gray")
+  # fill the empty plot with points, whose location is: x=second column of our data and y=first column of our data
+  lines  (data[ ,2], getregpred, lty="solid")
+  # then create a line whose position on x-axis is second column of our data and on y-axis is the prediction of our simple linear regression model using the estimated parameters
+  
+  return(getregpred) # in the end, the getregpred function gives us the value of our simple linear regression model's prediction
+}                                           
+
+# This is the Discrepancy Function we want to minimize via optimization
+# This function computes the discrepancy between column 1 in our data and the prediction of our simple linear regression model  (calculated using the parameter estimates for 'parms')
+rmsd <-function(parms, data1) {
+  iter <<- iter + 1
+  preds <- getregpred(parms, data1)
+  rmsd <- sqrt(sum((preds-data1[ ,1])^2)/length(preds))
+  cat(c("RMSD = ", rmsd, sep=""))
+  # This shows the RMSD value in the console window
+  return(rmsd)
+  # if we don't specify what variable should the function return using the function "return()", the last variable computed will automatically be the value returned by the function. To ensure that this function returns the rmsd variable we use return(rmsd).
+}
+```
+
+Listing 3.1 R code to generate synthetic data and compute regression parameters in two ways
+
+```{r listing_3.1}
+#################################
+### Creating a synthetic data ###
+#################################
+# define parameters to generate data
+nDataPts  <- 20
+rho       <- .8
+intercept <- .0
+
+# generate synthetic data
+data <- matrix(0,nDataPts,2) # create a matrix of nDataPts rows and 2 columns filled with 0
+data[ ,2] <- rnorm(nDataPts) # in the second column, fill the rows with a number of nDataPts value from a standard normal distribution
+data[ ,1] <- rnorm(nDataPts)*sqrt(1.0-rho^2) + data[ ,2]*rho + intercept  # in the first column, fill the rows with a number of nDataPts with values, whose 'relationship' with the second column is rho and with 'intercept' of intercept. The total variance is fixed to 1, just like the second column. This is a "perfect world" scenario of a Simple Linear Regression.
+View(data)
+```
+
+Regression analysis using optim()
+
+```{r}
+#########################################################
+### do regression analysis using the function optim() ###
+#########################################################
+
+# assign starting values 
+startParms <- c(-1., .2) 
+names(startParms) <- c("b1", "b0")
+# obtain parameter estimates
+xout <- optim(startParms, rmsd, data1=data)
+```
+
+Conventional regression analysis using lm()
+
+```{r}
+###########################################
+### do conventional regression analysis ###
+########## ( as a sanity check ) ########## 
+###########################################
+lm(data[,1] ~ data[,2])
+```
+
+### 3.5.1 Bootstraping
+
+Listing 3.3 R code to fit power model of forgetting data from Carpenter et al. (2008)
+
+```{r listing_3.3}
+rm(list=ls()) # to clear the entire workspace (Global Environment) so we start the script with a clean slate
+
+#####################################################################
+### fitting a Power Law of Forgetting to actual experimental data ###
+#####################################################################
+
+# discrepancy function for power forgetting function 
+powdiscrep <- function (parms,rec,ri) {                    
+  if (any(parms<0)||any(parms>1)) return(1e6)
+  # manually set upper and lower bound for the parameter estimate by returning a very big number when outside the desired range
+  pow_pred <- parms["a"] *(parms["b"]*ri + 1)^(-parms["c"])
+  return(sqrt( sum((pow_pred-rec)^2)/length(ri) ))
+  # returning the discrepancy between data and model prediction (RMSD)
+}
+# The parameters:
+#    a = Initial memory strength (the start)
+#    b = A scaling factor for time
+#    c = The decay rate (how fast is the forgetting)
+#    ri = Retention Interval (time elapsed since learning)
+
+# Carpenter et al. (2008) Experiment 1
+rec <- c(.93,.88,.86,.66,.47,.34)
+# recall data (the proportion of words being recalled at each interval)
+ri  <- c(.0035, 1, 2, 7, 14, 42)
+# retention interval data (in days)
+
+##########################################################
+### Searching for the best-fitting parameter estimates ###
+### via Optimization                                   ###
+##########################################################
+
+# initialize starting values
+sparms <-c(1,.05,.7)
+names(sparms) <- c("a","b","c")
+
+# obtain best-fitting estimates via optimization
+pout <- optim(sparms,powdiscrep,rec=rec,ri=ri)
+# arguments in the optim() above:
+#   par = sparms
+#   fn = powdiscrep
+#   rec=rec and ri=ri are additional arguments needed by the powdiscrep function. Any arguments we list after the function name in optim are "passed through" to the function every time it runs.
+
+
+pow_pred <- pout$par["a"]*(pout$par["b"]*c(0:max(ri)) + 1)^(-pout$par["c"])
+# takes the best-fitting parameters returned by optim in the structure pout and computes the model best-fitting prediction using those best-fitting parameter estimates of the model by interpolating across all observed retention intervals
+```
+
+Plot the model and data
+
+```{r}
+##############################################
+### plot data and best-fitting predictions ###
+##############################################
+#x11()
+dev.new(width = 5, height = 5, noRStudioGD = TRUE)
+
+par(cex.axis=1.2,cex.lab=1.4)
+# The axis numbers are made 20% larger, and the axis labels (X and Y titles) are 40% larger.
+par(mar=(c(5, 5, 3, 2) + 0.1),las=1)
+# This sets the margins around the plot (Bottom, Left, Top, Right). The extra space on the left (5.1) is often needed so the Y-axis label doesn't get cut off.
+plot(ri,rec,
+     xlab = "Retention Interval (Days)", 
+     ylab = "Proportion Items Retained",  
+     ylim=c(0.3,1),
+     xlim=c(0,max(ri)+1),
+     xaxt="n", # This suppresses the X-axis. We do this because we want to draw a custom, highly detailed X-axis below using the axis() command
+     type="n") # we tell not to create anything yet, just prepare the canvas
+lines(c(0:max(ri)),pow_pred,lwd=1) # This is our model line. lwd is the size of the line.
+points(ri,rec,pch=21, bg="dark grey",cex=2) # circles to represent the data. pch is the type of symbol. cex is the size.
+dev <- pow_pred[ri+1]
+# pow_pred was calculated for every integer day from 0 to 42 (e.g., pow_pred[1] is Day 0, pow_pred[2] is Day 1). Since R starts counting at 1, we add 1 to the day to get the right position in the list. This is the 6 points in our model line exactly above or below the actual rec data.
+for (x in c(1:length(ri))) {
+  lines(c(ri[x],ri[x]),c(dev[x],rec[x]),lwd=1)
+  } # This draws vertical error bars (residuals) for each data point.
+    # the position on x axis doesn't move ---> (ri[x],ri[x])
+    # but vertically stretch a line ---> (dev[x],rec[x])
+axis(1,at=c(0:(max(ri)+1)))
+```
+
+Perform bootstrapping
+
+```{r}
+######################################
+### perform bootstrapping analysis ###
+######################################
+
+ns  <- 55
+# The sample size (number of "subjects" being simulated in each round)
+nbs <- 1000
+# The number of bootstrap samples (how many times we simulate a synthetic data of each with ns subjects)
+bsparms <- matrix(NA,nbs,length(sparms))
+# An empty matrix (1,000 rows by 3 columns) to store the "best-fitting" parameters for every simulated experiment.
+
+bspow_pred <- pout$par["a"] *(pout$par["b"]*ri + 1)^(-pout$par["c"])
+# This is a list of the 6 predicted probabilities calculated by our model. The calculation uses the best-fitting parameter estimates. 
+
+for (i in c(1:nbs)) {   
+    recsynth     <- vapply(bspow_pred, FUN=function(x) mean(rbinom(ns,1,x)), numeric(1))
+    # We get 6 observations of recall data, randomly coming from binomial distribution, the parameter of p(1) of that binomial distribution being the predicted each recall proportion produced by our model (bspowpred)
+    # We do this nbs times ---> for (i in c(1:nbs))
+    # numeric(1) in vapply is a safety feature. It tells R: "I expect exactly one number back when the function is applied to every x." This makes sure that applying the function(x) to every x in bspowpred returns exactly a vector of numeric values the same length.
+    
+    bsparms[i,]  <- unlist(optim(pout$par,powdiscrep,rec=recsynth,ri=ri)$par)
+    # We apply optim() by minimizing the powdiscrep function to the synthetic data (recsynth)
+    # We get the best-fitting parameters from this synthetic data as optim(...)$par
+    # sometimes the output of an optimizer can be a list. We unlist the vector optim(...)$par  to make sure it is now a vector and not a list and put it as row i in the bsparms metrix
+}
+```
+
+```{r}
+####################################################
+### Plot a histogram of the bootstrapping result ###
+####################################################
+
+dev.new(width = 8, height = 5, noRStudioGD = TRUE)
+
+# function to plot a histogram
+histoplot<-function(x,l4x) {
+    hist(x,xlab=l4x,main="",xlim=c(0,1),cex.lab=1.5,cex.axis=1.5)
+    lq <- quantile(x,0.025) #lower quantile
+    abline(v=lq,lty="dashed",lwd=2) #create abline at lower quantile
+    uq <- quantile(x,0.975) #upper quantile
+    abline(v=uq,lty="dashed",lwd=2) #create abline at upper quantile
+    return(c(lq,uq))
+    #the space between these two dashed lines is our confidence interval
+}
+
+# Apply the histoplot function to all three parameters separately all at once
+# x11(5,2)
+par(mfcol=c(1,3),las=1)
+for (i in c(1:dim(bsparms)[2])) {
+    print(histoplot(bsparms[,i],names(sparms)[i]))
+}
+```
+
 ## Chapter 4: Maximum Likelihood Parameter Estimation
+
+### 4.3.1 Probability Functions Specified by the Psychological Model
 
 Listing 4.1
 
 ```{r listing_4.1}
 
+rm(list=ls())
+
+# Function of the shifted Wald Probability Density
 rswald <- function(t, a, m, Ter) {
   ans <- a/sqrt(2*pi*(t-Ter)^3)*exp(-(a-m*(t-Ter))^2/(2*(t-Ter)))
 }
+# parameters:
+#   t = response time
+#   m = the drift
+#   a = the position of the response boundary
+#   Ter = shift term representing non-decision time
 
-# The shifted Wald probability density function
+# In this case, the probability density function is itself the model of behavior and no further assumptions (or intermediary) functions are needed to relate the model to the data
 ```
 
-Listing 4.2
+### 4.3.2 Probability Functions via Data Models
+
+Listing 4.3 Code for obtaining predicted probabilities of responses from GCM
+
+```{r listing_4.3}
+
+rm(list=ls())
+
+# The function that implements the mathematical core of the GCM, calculating the predicted probability of a specific category response (e.g., Category A).
+
+GCMpred <- function(probe, exemplars, c, w) {
+  
+# probe = A vector representing the new stimulus to be categorized (e.g., the features of a single face). This is the new object whose category is unknown.
+  
+# exemplars = The memory of past category members.
+  #   A list of matrices. exemplars[[1]] (row 1) holds the memory traces
+  #   for Category A; exemplars[[2]] (row 2) holds traces for Category B.
+  
+# c = A single, positive scalar called the scaling parameter. It controls the steepness of the similarity function (how quickly similarity drops as distance increases).
+  
+# w = A vector of attention weights (one weight for each stimulus dimension/feature). It controls the relative importance of each feature (dimension) during comparison.
+  
+# calculate likelihod of N_A `A' responses out of N given parameter c
+  
+# 'stim' is a single vector representing the stimulus to be categorised
+# 'exemplars' is a list of exemplars; the first list item is the 'A' exemplars in memory, and the second list item is the `B` exemplars in memory each list item is a matrix in which the rows correspond to individual exemplars
+# 'c' is the scaling parameter, and 'w' is a vector giving weighting for each stimulus dimension (the columns in 'stim' and 'exemplars')
+  
+# note: for a large number of categories we could use lapply to loop across the categories in the list 'exemplars'
+  
+  dist <- list()
+  for (ex in exemplars) {
+    dist[[length(dist)+1]] <- apply(as.array(ex), 1, function(x) sqrt(sum(w*(x-probe)^2)))
+  }
+  
+# This loop calculates the psychological distance between the probe and every single exemplar in memory. This uses the weighted Euclidean distance formula. This loop calculates the distances of every exemplar (5 exemplar for category A; 5 exemplar for category B) with each probe.
+
+# The '1' in apply() means "loop by row".
+  
+# w is multiplied by the squared difference between the probe and the
+# exemplar, ensuring that highly attended dimensions (w is large)
+# contribute more to the distance.
+
+# The result is a list (dist) where dist[[1]] is a vector of distances to
+# all A exemplars, and dist[[2]] is a vector of distances to all B exemplars.
+  
+  sumsim <- lapply(dist, function(a) sum(exp(-c*a)))
+  
+# The 'lapply' loop converts the distance (a dissimilarity measure) into psychological similarity using a negative exponential function.
+
+# a is the vector of distances for one category.
+
+# sum(exp(-c*a)) calculates the summed similarity (or category activation) for that category. The parameter c (scaling parameter) modulates how quickly similarity falls off with distance.
+
+# The result is a list (sumsim) where sumsim[[1]] is the total similarity/activation for Category A, and sumsim[[2]] is the total for Category B.
+  
+  r_prob <- unlist(sumsim)/sum(unlist(sumsim))
+  
+# The final step converts the category activations into response probabilities using the ratio rule (specifically, Luce's choice rule)
+#   Mathematically: P(A) = Activation_A / (Activation_A + Activation_B)
+#                        = Summed(Similarity Probe,Exemplar_A) /
+#                          (Summed(Similarity Probe&Exemplar_A) +
+#                          Summed(Similarity Probe&Exemplar_B))
+}
+```
+
+Listing 4.2 Linking GCM and the binomial function
 
 ```{r listing_4.2}
 
 # This code implements the core calculations of the General Context Model (GCM), a highly influential model in cognitive psychology used to predict how people categorize a new stimulus based on their memory of past examples (exemplars).
 
-source("GCMpred.R")
+# source("GCMpred.R")
 # The function that implements the mathematical core of the GCM (stored in GCMpred.R file), calculating the predicted probability of a specific category response (e.g., Category A).
 
 N <- 2*80 # there were 2 responses nper face from 80 people
@@ -185,11 +534,61 @@ cat("prediction category A: ", preds[[1]], "\n",
     "likelihood of the data: ", likelihood, sep="")
 ```
 
-Listing 4.4
+### 4.4 Finding the Maximum Likelihood
+
+Listing 4.4 R code to implement a version of GCM with a deterministic response rule (Nosofsky, 1991)
+
+```{r listing_4.4}
+# This implements a version of the General Context Model (GCM) for categorization, specifically modified to include perceptual or decisionn noise and a response bias.
+
+GCMprednoisy <- function(probe, exemplars, c, w, sigma, b){
+  
+  # sigma = The standard deviation (SD) of noise. The stochasticity parameter that controls the amount of Gaussian noise in the decision process.
+  
+  # b = The response bias parameter.
+  #     Represents a preference for one category over the other, independent of
+  #     the stimulus evidence.
+  
+  # calculate likelihod of N_A `A' responses out of N given parameter c
+  
+  # 'stim' is a single vector representing the stimulus to be categorised
+  
+  # 'exemplars' is a list of exemplars; the first list item is the 'A' exemplars in memory, and the second list item is the `B` exemplars in memory
+  
+  #   each list item is a matrix in which the rows correspond to individual exemplars
+  
+  # 'c' is the scaling parameter, and 'w' is a vector giving weighting for each stimulus dimension (the columns in 'stim' and 'exemplars')
+  
+  # note: for a large number of categories we could use lapply to loop across the categories in the list 'exemplars'
+  
+  dist <- list()
+  for (ex in exemplars){
+    dist[[length(dist)+1]] <- apply(as.array(ex), 1, 
+                                    function(x) sqrt(sum(w*(x-probe)^2)))
+  }
+  
+  sumsim <- unlist(lapply(dist, function(a) sum(exp(-c*a))))
+  
+  # this only works for 2 categories
+  # we also simplify Nosofsky model in only applying noise at the end
+  
+  r_prob <- c(0,0)
+  r_prob[1] <- pnorm(sumsim[1]-sumsim[2]-b,sd=sigma)
+  # This line calculates the probability of choosing Category A (r_prob[1]) using the cumulative distribution function of the Normal distribution (pnorm).
+  
+  # The probability of choosing A is the probability that the noisy decision evidence exceeds a threshold.
+  
+  # −b: A constant bias. If b>0, the net evidence must be higher to choose A (i.e., it biases the response toward B). If b<0, it biases the response toward A.
+  r_prob[2] <- 1 - r_prob[1]
+  return(r_prob)
+}
+```
+
+Listing 4.5 R code to fit the modified version of GCM to some data
 
 ```{r listing_4.5}
 
-source("GCMprednoisy.R")
+#source("GCMprednoisy.R")
 library(dfoptim)
 
 # A function to get deviance from GCM
@@ -203,7 +602,7 @@ GCMutil <- function(theta, stim, exemplars, data, N, retpreds){
   
   nDat <- length(data)
   dev <- rep(NA, nDat)
-  preds <- dev
+  preds <- rep(NA, nDat)
   
   c <- theta[1]
   w <- theta[2]
@@ -244,29 +643,31 @@ exemplars <- list(a=stim[1:5,], b= stim[6:10,])
 data <- scan(file="facesDataLearners.txt") # The proportions of 'A' responses by the participants for each stimuli (total 34 stimuli)
 data <- ceiling(data*N)
 
-bestfit <- 10000
+bestfit <- 1000000
 
 for (w1 in c(0.25,0.5,0.75)){
   for (w2 in c(0.25,0.5,0.75)){
     for (w3 in c(0.25,0.5,0.75)){
       
-      # initial_par <- c(1, w1, w2, w3, 1, 0.2)
-      # cat("\n--- Starting Optimization ---\n")
-      print(c(w1, w2, w3))
-      # cat("Initial par vector: ", initial_par, "\n")
+       initial_par <- c(1, w1, w2, w3, 1, 0.2)
+       cat("\n--- Starting Optimization ---\n")
+      # print(c(w1, w2, w3))
+       cat("Initial par vector: ", initial_par, "\n")
       
       fitres <- nmkb(par=c(1,w1,w2,w3,1,0.2),
            fn = function(theta) GCMutil(theta,stim,exemplars,data, N, FALSE),
            lower=c(0,0,0,0,0,-5),
            upper=c(10,1,1,1,10,5),
            control=list(trace=0))
-      print(fitres)
-      # cat("Optimization COMPLETE.\n")
-      # cat("Convergence status: ", fitres$convergence, 
-          #" (0 = Success)\n")
-      # cat("Final Deviance (Value): ", fitres$value, "\n")
-      # cat("Final Parameters (c, w1, w2, w3, sigma, b): ", fitres$par, "\n")
-      # cat("-----------------------------------\n")
+      
+      #print(fitres)
+      
+       cat("Optimization COMPLETE.\n")
+       cat("Convergence status: ", fitres$convergence, 
+          " (0 = Success)\n")
+       cat("Final Deviance (Value): ", fitres$value, "\n")
+       cat("Final Parameters (theta)", fitres$par, "\n")
+       cat("-----------------------------------\n")
       
       if (fitres$value<bestfit){
         bestres <- fitres
@@ -280,17 +681,26 @@ for (w1 in c(0.25,0.5,0.75)){
 preds <- GCMutil(bestres$par,stim,exemplars,data, N, TRUE)
 
 #pdf(file="GCMfits.pdf", width=5, height=5)
+dev.new(width = 5, height = 5, noRStudioGD = TRUE)
 plot(preds,data/N,
      xlab="Data", ylab="Predictions")
 #dev.off()
 
-print(bestres)
+#bestres
 theta <- bestres$par
 w <- theta[2]
 w[2] <- (1-w[1])*theta[3]
 w[3] <- (1-sum(w[1:2]))*theta[4]
 w[4] <- (1-sum(w[1:3]))
-print(w)
+
+cat("Best-Fitting Parameters", "\n",
+    "c     = ", round(theta[1],2), "\n",
+    "w1    = ", round(w[1],2), "\n",
+    "w2    = ", round(w[2],3), "\n",
+    "w3    = ", round(w[3],2), "\n",
+    "w4    = ", round(w[4],2), "\n",
+    "sigma = ", round(theta[5],2), "\n",
+    "b     = ", round(theta[6],3), sep="")
 ```
 
 ## Chapter 5: Combining Information from Multiple Participants
