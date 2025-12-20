@@ -278,7 +278,7 @@ Conventional regression analysis using lm()
 lm(data[,1] ~ data[,2])
 ```
 
-### 3.5 Variability in Parameter Estimates 
+### 3.5 Variability in Parameter Estimates
 
 #### 3.5.1 Bootstraping
 
@@ -450,7 +450,7 @@ rswald <- function(t, a, m, Ter) {
 Listing 4.3 Code for obtaining predicted probabilities of responses from GCM
 
 ```{r listing_4.3}
-
+# THIS IS THE CONTENT OF THE "GCMpred.R" FILE
 rm(list=ls())
 
 # The function that implements the mathematical core of the GCM, calculating the predicted probability of a specific category response (e.g., Category A).
@@ -517,7 +517,7 @@ Listing 4.2 Linking GCM and the binomial function
 
 # This code implements the core calculations of the General Context Model (GCM), a highly influential model in cognitive psychology used to predict how people categorize a new stimulus based on their memory of past examples (exemplars).
 
-# source("GCMpred.R")
+source("GCMpred.R")
 # The function that implements the mathematical core of the GCM (stored in GCMpred.R file), calculating the predicted probability of a specific category response (e.g., Category A).
 
 N <- 2*80 # there were 2 responses nper face from 80 people
@@ -539,7 +539,7 @@ likelihood <- dbinom(N_A, size=N, prob=preds[1])
 
 cat("prediction category A: ", preds[[1]], "\n",
     "prediction category B: ", preds[[2]], "\n",
-    "likelihood of the data: ", likelihood, sep="")
+    "likelihood of the parameter estimate used (given the data): ", likelihood, sep="")
 ```
 
 ### 4.4 Finding the Maximum Likelihood
@@ -547,6 +547,8 @@ cat("prediction category A: ", preds[[1]], "\n",
 Listing 4.4 R code to implement a version of GCM with a deterministic response rule (Nosofsky, 1991)
 
 ```{r listing_4.4}
+# THIS IS THE CONTENT OF THE "GCMprednoisy.R" FILE
+
 # This implements a version of the General Context Model (GCM) for categorization, specifically modified to include perceptual or decisionn noise and a response bias.
 
 GCMprednoisy <- function(probe, exemplars, c, w, sigma, b){
@@ -596,7 +598,7 @@ Listing 4.5 R code to fit the modified version of GCM to some data
 
 ```{r listing_4.5}
 
-#source("GCMprednoisy.R")
+source("GCMprednoisy.R")
 library(dfoptim)
 
 # A function to get deviance from GCM
@@ -655,19 +657,46 @@ exemplars <- list(a=stim[1:5,], b= stim[6:10,])
 data <- scan(file="facesDataLearners.txt") # The proportions of 'A' responses by the participants for each stimuli (total 34 stimuli)
 data <- ceiling(data*N)
 
-bestfit <- 1000000
+#for (w1 in c(0.25,0.5,0.75)){
+  #for (w2 in c(0.25,0.5,0.75)){
+    #for (w3 in c(0.25,0.5,0.75)){
+      
+       #initial_par <- c(1, w1, w2, w3, 1, 0.2)
+       
+# create more elaborate starting values where all parameters have multiple starting values
+set.seed(777)
+st_c <- runif(100, min=0.02, max=9.98)
+st_w1 <- runif(100, min=0.02, max=0.98)
+st_w2 <- runif(100, min=0.02, max=0.98)
+st_w3 <- runif(100, min=0.02, max=0.98)
+st_sigma <- runif(100, min=0.02, max=9.98)
+st_b <- runif(100, min=-4.98, max=4.98)
 
-for (w1 in c(0.25,0.5,0.75)){
-  for (w2 in c(0.25,0.5,0.75)){
-    for (w3 in c(0.25,0.5,0.75)){
-      
-       initial_par <- c(1, w1, w2, w3, 1, 0.2)
-       cat("\n--- Starting Optimization ---\n")
+st_val <- cbind(st_c,st_w1, st_w2, st_w3, st_sigma, st_b)
+st_val <- split(st_val, seq(nrow(st_val)))
+str(st_val)
+
+bestfit <- Inf
+bestres <- NULL
+
+for (f in seq_along(st_val)) {
+  
+  tryCatch({
+    
+       start <- st_val[[f]]
+       
+       cat("\n--- Starting Optimization ", f, " of ", length(st_val)," ---\n", sep="")
       # print(c(w1, w2, w3))
-       cat("Initial par vector: ", initial_par, "\n")
+       #cat("Initial par vector: ", initial_par, "\n")
+       #cat("Initial par vector: ", start, "\n")
+       cat("Initial par vector: ", paste(round(start, 3), collapse = ", "), "\n")
       
-      fitres <- nmkb(par=c(1,w1,w2,w3,1,0.2),
-           fn = function(theta) GCMutil(theta,stim,exemplars,data,N,FALSE),
+      fitres <- nmkb(par=start,
+           fn = function(theta) {
+             out <- GCMutil(theta,stim,exemplars,data,N,FALSE)
+             if (is.na(out) || is.infinite(out)) {
+               return(1e10) } # Return a huge penalty value instead of NA or Inf
+             return(out)  },
            lower=c(0,0,0,0,0,-5),
            upper=c(10,1,1,1,10,5),
            control=list(trace=0))
@@ -684,11 +713,13 @@ for (w1 in c(0.25,0.5,0.75)){
       if (fitres$value<bestfit){
         bestres <- fitres
         bestfit <- fitres$value
+        cat("NEW BEST FOUND!\n")
       }
-    }
-  }
+  })
+    #}
+  #}
+#}
 }
-
 
 preds <- GCMutil(bestres$par,stim,exemplars,data,N, TRUE)
 
@@ -717,7 +748,7 @@ cat("Best-Fitting Parameters", "\n",
 theta_bs <- bestres$par
 ```
 
-#### Try bootstrapping
+#### Try bootstrapping to the estimate of GCMprednoisy
 
 ```{r}
 #################################################################
@@ -734,14 +765,14 @@ for (each_nbs in (1:nbs)) {
   
   tryCatch({
   
-     pA_synth <- vapply(preds, FUN=function(x) sum(rbinom(N,1,x)), numeric(1))
+     propA_synth <- vapply(preds, FUN=function(x) sum(rbinom(N,1,x)), numeric(1))
      # Why sum the rbinom? Because the GCMutil function only accepts the number of 'A' choices and not the proportion/probability. So instead of mean(), we use sum() to return the number of 'A' choices.
      
      bs_bestres <- bestres
      bs_bestfit <- Inf
        
      bs_fitres <- nmkb(par = theta_bs,
-                       fn  = function(theta) GCMutil(theta,stim,exemplars,pA_synth,N,FALSE),
+                       fn  = function(theta) GCMutil(theta,stim,exemplars,propA_synth,N,FALSE),
                        lower=c(0,0,0,0,0,-5),
                        upper=c(10,1,1,1,10,5),
                        control=list(trace=0))
@@ -774,6 +805,7 @@ for (each_nbs in (1:nbs)) {
 Plot the bootstrap estimates
 
 ```{r}
+# Inspect the range of the bootstrap distribution
 get_bs_range <- function(x) {
   return(c(Min = min(x, na.rm = TRUE), 
            Max = max(x, na.rm = TRUE)))
@@ -782,6 +814,7 @@ get_bs_range <- function(x) {
 range_bs_par <- apply(bsparms, 2, get_bs_range)
 colnames(range_bs_par) <- c("c","w1","w2","w3","sigma","b")
 
+# Decide the appropriate range to show in the plots
 up_low_bs_par <- list(c(0,5),
                       c(0,1),
                       c(0,0.1),
@@ -1138,4 +1171,156 @@ matplot(t(kmres$centers), type="b", ylim=c(0,1),
 
 #plot(2:7, kk, type="b", xlab="N Clusters", ylab="")
 
+```
+
+## Chapter 5: Bayesian Parameter Estimation (Basic Concepts)
+
+### 6.2 Analytic Methods for Obtaining Posteriors
+
+#### 6.2.2 The Prior Distribution
+
+Listing 6.1 Plotting some simple Beta distributions
+
+```{r listing_6.1}
+rm(list=ls())
+
+#plot some betas
+#curve(dbeta(x, 2, 4),ylim=c(0,6),ylab="Probability Density",las=1)
+#curve(dbeta(x, 8, 16),add=TRUE,lty="dashed")
+#legend("topright",c("Johnnie","Jane"), inset=0.03,lty=c("solid","dashed"))
+
+# Another neat way to create the same plot
+# ------------------  write a function for plotting ------------------
+# set up the canvas
+plot_beta <- function (current_state, compare_to_jane = TRUE) {
+
+a <- current_state[1]
+b <- current_state[2]
+
+plot(NULL, xlim=c(0,1), ylim=c(0,6), las=1,
+     xlab="Probability of Success",
+     ylab="Probability Density",
+     main = paste("Johnnie's success =", a, "out of", a+b))
+
+curve(dbeta(x, a, b), add=TRUE, col="royalblue", lwd=2) # Johnnie's Curve
+abline(v = a/(a+b), col="royalblue", lty=3) # Johnnie's mean line
+
+# Optional: Compare to Jane
+if (compare_to_jane) {
+    curve(dbeta(x, 8, 16), add=TRUE, col="firebrick", lwd=2, lty="dashed")
+    abline(v = 8/(8+16), col="firebrick", lty=3)
+    
+    # Add legend
+    legend("topright", c("Johnnie", "Jane"), 
+           inset=.05, lty=c("solid", "dashed"),
+           col=c("royalblue", "firebrick"), lwd=2)
+    }
+}
+# ---------------------------------------------------
+
+# Data
+johnnie_before <- c(2,4)
+johnnie_after <- c(2+4,4+8)
+johnnie_versions <- list(johnnie_before, johnnie_after)
+
+# Execution
+par(mfrow = c(1, length(johnnie_versions)))
+
+for (i in seq_along(johnnie_versions)) {
+  plot_beta(johnnie_versions[[i]], compare_to_jane=TRUE)
+}
+```
+
+```{r}
+#the remaining lines are not listed in the book but perform some of the computations mentioned there
+probdens_Jane <- pbeta(.48,8,16)-pbeta(.18,8,16)
+probdens_Johnnie <- pbeta(.48,2,4)-pbeta(.18,2,4)
+
+cat("There is ", round(probdens_Johnnie,2), " probability that Johnnie's true parameter \"batting success rate\" lies between 0.18 and 0.48", "\n",
+    "Meaning, there is ",round(probdens_Johnnie,2)*100,"% chance the true parameter is inside the range 0.18 to 0.48 and there is ",(1-round(probdens_Johnnie,2))*100,"% chance the true parameter is outside that range. Which means, not so convincing.", "\n", "\n",
+    "There is ", round(probdens_Jane,2), " probability that Jane's true parameter \"batting success rate\" lies between 0.18 and 0.48", "\n",
+    "Meaning, there is ",round(probdens_Jane,2)*100,"% chance the true parameter is inside the range 0.18 to 0.48 and there is ",(1-round(probdens_Jane,2))*100,"% chance the true parameter is outside that range. Which means, more convincing.",sep="")
+# Calculating the probability mass within a specific interval ([0.18,0.48]) for both Johnnie and Jane. pbeta() calculates the Cumulative Distribution Function (a certain the area under the curve).
+# In Bayesian terms, this is asking: "What is the probability that the true parameter θ lies between 0.18 and 0.48?"
+# Why .48 and .18? Because the mean of both distribution is 0.33 and here we want to calculate the area between -0.15 and +0.15 from that mean.
+
+# Usually in Bayesian statistical analysis we calculate our 'confidence' by inspecting the area 95% covered in the middle. The Bayesian term for this is the 95% Credible Interval.
+# Using the above method, we simply replace the 0.53 with 0.975 and 0.13 with 0.025. or we can use the quantile function:
+lower_johnnie <- qbeta(0.025, 2, 4)
+upper_johnnie <- qbeta(0.975, 2, 4)
+
+lower_jane <- qbeta(0.025, 8, 16)
+upper_jane <- qbeta(0.975, 8, 16)
+
+cat("There is 95% probability that Johnnie's true parameter \"batting success rate\" lies between ", round(lower_johnnie,2), " and ", round(upper_johnnie,2),". The interval spans ", round(upper_johnnie,2) - round(lower_johnnie,2), " (quite wide ---> uncertain)", sep="")
+cat("There is 95% probability that Jane's true parameter \"batting success rate\" lies between ", round(lower_jane,2), " and ", round(upper_jane,2),". The interval spans ", round(upper_jane,2) - round(lower_jane,2), " (narrower ---> more certain)", sep="")
+
+# The uncertainty interval of Johnnie's parameter is wider, not so certain.
+# Meanwhile, Jane's parameter uncertainty interval is smaller, more certain.
+# The above method is simply chopping off 2.5% edges of the distribution. It's okay when the distribution shape is symetrical.
+
+# Another way is to calculate the Highest Density Interval (HDI), which is the absolute narrowest window that captures 95% of the probability. HDI is more reliable when the distribution shape is skewed.
+
+# Calculate using HDInterval package
+#install.packages("HDInterval") #install package to calculate HDI
+library(HDInterval)
+
+# Johnnie (Alpha=2, Beta=4)
+hdi_johnnie <- hdi(qbeta, credMass = 0.95, shape1 = 2, shape2 = 4)
+print(hdi_johnnie)
+
+# Jane (Alpha=8, Beta=16)
+hdi_jane <- hdi(qbeta, credMass = 0.95, shape1 = 8, shape2 = 16)
+print(hdi_jane)
+
+cat("Johnnie's parameter credible interval spans ", round(hdi_johnnie[2]-hdi_johnnie[1],2), "\n")
+cat("Jane's parameter credible interval spans ", round(hdi_jane[2]-hdi_jane[1],2), "\n")
+```
+
+Demonstrating Bayesian updating
+
+```{r}
+####################################################
+### Demonstrating the core of Bayesian Updating. ###
+####################################################
+# This shows how a person's "Prior" belief changes as they observe more and more data.
+
+#x11(7,7)
+dev.new(width = 6, height = 6, noRStudioGD = TRUE)
+alpha <- beta <- 12
+# When the parameter alpha and beta of a beta distribution is set to 12, the shape is highest at 0.5 and symetric. Using a beta distribution of this shape as a prior distribution means we are completely not sure and give uninformative prior.
+
+# See this plot:
+curve(dbeta(x, alpha, beta), ylim=c(0,40), ylab="Probability Density", las=1, lwd=3)
+
+t<-c(12,100,1000)
+# This vector represents the number of failures (or "Tails") observed in three different scenarios.
+
+i<-0
+
+results_table <- matrix(NA, nrow = 3, ncol = 2)
+colnames(results_table) <- c("With Prior", "Ignoring Prior")
+rownames(results_table) <- c("Small Data", "Medium Data", "Large Data")
+
+for (h in c(14,113,1130)){
+  # This loop iterates through three corresponding numbers of successes (or "Heads").
+  # Small sample: 14 Heads / 12 Tails (0.54)
+  # Medium sample: 113 Heads / 100 Tails (0.53)
+  # Large sample: 1130 Heads / 1000 Tails (0.53)
+  i<-i+1
+  curve(dbeta(x, alpha+h, beta+t[i]),add=TRUE,lty=log10(t)+1)
+  # lty=log10(t)+1 ---> This is a clever way to change the Line Type automatically. As t gets larger (12, 100, 1000), the log10 value increases (roughly 1, 2, 3), ensuring each scenario has a different dash pattern.
+  
+  results_table[i, 1] <- (alpha + h) / (alpha + h + beta + t[i])
+  results_table[i, 2] <- h / (h + t[i])
+}
+
+legend("topright",c("{14, 26}","{113, 213}", "{1130, 2130}"), 
+       inset=.05,lty=c(2:4))
+abline(v=0.5,col="red")
+
+print(results_table)
+
+pbeta(.5,1130,1000)
+pbeta(.5305164,1130,1000)
 ```
