@@ -1324,3 +1324,19 @@ print(results_table)
 pbeta(.5,1130,1000)
 pbeta(.5305164,1130,1000)
 ```
+
+## Beta Distribution Parameters Calculator
+
+```{r}
+beta_params <- function(expectation, var) {
+  if (var >= expectation * (1 - expectation)) {
+    stop("Variance is too high for the given expectation!")
+  }
+  
+  common_term <- (expectation * (1 - expectation) / var) - 1
+  alpha <- expectation * common_term
+  beta  <- (1 - expectation) * common_term
+  
+  return(c(alpha = alpha, beta = beta))
+}
+```
