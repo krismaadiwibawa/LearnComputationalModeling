@@ -1173,7 +1173,7 @@ matplot(t(kmres$centers), type="b", ylim=c(0,1),
 
 ```
 
-## Chapter 5: Bayesian Parameter Estimation (Basic Concepts)
+## Chapter 6: Bayesian Parameter Estimation (Basic Concepts)
 
 ### 6.2 Analytic Methods for Obtaining Posteriors
 
@@ -1311,8 +1311,8 @@ for (h in c(14,113,1130)){
   curve(dbeta(x, alpha+h, beta+t[i]),add=TRUE,lty=log10(t)+1)
   # lty=log10(t)+1 ---> This is a clever way to change the Line Type automatically. As t gets larger (12, 100, 1000), the log10 value increases (roughly 1, 2, 3), ensuring each scenario has a different dash pattern.
   
-  results_table[i, 1] <- (alpha + h) / (alpha + h + beta + t[i])
-  results_table[i, 2] <- h / (h + t[i])
+  results_table[i, 1] <- round(((alpha + h) / (alpha + h + beta + t[i])),3)
+  results_table[i, 2] <- round((h / (h + t[i])),3)
 }
 
 legend("topright",c("{14, 26}","{113, 213}", "{1130, 2130}"), 
@@ -1339,4 +1339,104 @@ beta_params <- function(expectation, var) {
   
   return(c(alpha = alpha, beta = beta))
 }
+```
+
+## Chapter 7: Bayesian Parameter Estimation - Monte Carlo Methods
+
+### 7.1 Markov Chain Monte Carlo Methods
+
+#### 7.1.1 The Metropolis-Hastings Algorithm for MCMC
+
+Listing 7.1 Metropolis-Hastings estimate of the mean of a normal distribution
+
+```{r listing_7.1}
+rm(list=ls())
+#dev.off()
+# Suppose we administer an intelligence test to a child who is one of a group of children considered to be particularly gifted. This child scores y = 144 on a test that is known to be normally distributed with sd = 15 for the population at large. What is the likely value of mu for the population of gifted children, assuming a uniform prior distribution for mu?
+
+# We have one piece of data (y=144) and we are trying to guess the "true" average IQ (μ) of the group this child belongs to.
+
+# Since we assume a Uniform Prior (meaning we have no idea what the IQ should be beforehand), the most likely value for the group average is probably the one we just saw (144). But how certain are we? This code uses MCMC (Markov Chain Monte Carlo) to find that out.
+
+# Imagine you find a strange gold coin. You flip it once and it's Heads.
+#
+#     The Data: 1 Head.
+#     The Question: What is the "true" probability (μ) of this coin landing on heads?
+#
+# The MCMC Approach: Instead of doing a math equation, you have a "robot" (the code) wander around all possible values from 0 to 1. The robot spends more time at values that "fit" the data (like 0.7 or 0.8) and less time at values that don't (like 0.1).
+#
+# The for loop is the robot's journey. Here is its logic at every step:
+#
+# The Proposal: The robot is currently at 150. It closes its eyes and takes a random step (using propsd = 20) and lands at, say, 170.
+#
+# The Evaluation: It asks: "Is 170 a better explanation for a child scoring 144 than 150 is?"
+#
+# The Decision:
+#     If 170 is better: The robot moves there.
+#     If 170 is worse: The robot usually stays put, but occasionally moves there anyway just to explore.
+
+# Here, the robot is wandering around IQ scores to see which ones "fit" the score of 144.
+
+# perform MCMC ---------------------------------------------------------------------------
+burnin <- 200
+# An IQ of 500 is impossible. The robot starts in the middle of nowhere (the "red" line in your trace plot). It takes about 100-200 steps for the robot to finally "find" the real data around 144.
+# Burn-in is the act of throwing away those first 1000 panic-steps so they don't mess up our final average.
+
+chain <- rep(0,5000) # this will be filled with markov-chain
+obs <- 144 # a single observed score (an IQ of a gifted child)
+propsd <- 20 # tuning parameter (the sd of the proposal distribution)
+
+chain[1] <- 500  # starting value (we seed the chain with a plausible value)
+# "We create a plausible starting value for the parameter(s) whose posterior distribution – called the 'target distribution' for the purposes of MCMC – we wish to estimate. This becomes our current sample."
+for (i in 2:length(chain)) {
+    current <- chain[i-1]
+    proposal <- current + rnorm(1,0,propsd)
+    if (dnorm(obs,proposal,15) > dnorm(obs,current,15)) { 
+       chain[i] <- proposal  # accept proposal
+       # dnorm gives us the probability density at 'obs' (x-axis) of a distribution with center 'proposal' and width 15. In this case, we know the true distribution is a normal distribution with sd=15. 
+       # "If the true group mean were actually proposal, how likely is it that we would see a score of obs?"
+       # If the proposal has the higher density (i.e. is closer to the mean of the target distribution), then it is accepted and becomes the next sample in the chain.
+    } else {
+       chain[i] <- ifelse(runif(1) < dnorm(obs,proposal,15)/dnorm(obs,current,15),  
+                          proposal, 
+                          current)
+       # If the proposal has lower density, it may still be accepted, but only in proportionality to its relative merit: the probability of acceptance is equal to the ratio between the densities of the proposal and the current sample.
+       # In other words, if the proposal has lower density, it is still considered (accepted) but not that often. The lower the density of the proposal the less often it is going to be considered.
+       # This consideration/acceptance is random. If the proposal happened to be rejected, we use again the 'current' and the process is repeated.
+    }
+}
+
+# ----------------------------------------------------------------------------------------
+
+hist(chain)
+mean(chain)
+
+# The Density Plot
+# The Density Plot (The Answer) shows a bell curve. The peak is at 144.
+# The width of this curve tells you the likely range. Even though you saw 144, the MCMC shows the "true" group mean could realistically be anywhere between 120 and 170.
+plot(density(chain),las=1,xlab=bquote("Sampled values of "*mu),
+     yaxt="n",lwd=2,lty="dashed",
+     main="",xlim=c(100,200),ylab="",
+     ylim=c(0,max(max(density(chain)$y),
+                  max(density(chain[-c(1:burnin)])$y),
+                  max(dnorm(c(100:200),144,15)))*1.4))
+lines(density(chain[-c(1:burnin)]),lwd=2,lty="solid")
+lines(c(100:200),dnorm(c(100:200),144,15),col="red",lwd=2)
+mtext("   Density",2,1)
+legend("topright",inset=.02,c("Normal PDF","All MCMC","Excluding burnin"),
+       lty=c("solid","dashed","solid"),col=c("red","black","black"),lwd=2)
+
+# The Trace-Plot
+# The Trace Plot (The Journey) shows the robot starting at 500, rushing down to 144, and then "vibrating" around 144. This vibration represents your uncertainty.
+plot(chain,type="l",las=1,xlab="Iteration",ylab="Value of accepted sample")
+lines(1:burnin,chain[1:burnin],col="red")
+
+# We are using a random walk to discover a probability distribution.
+# Instead of just saying "The answer is 144," the MCMC allows us to say: "The answer is 144, but because I only have one child's score and the test has a standard deviation of 15, I am only this confident about that number."
+```
+
+Listing 7.2 Computing posterior normal densities when an informative prior is provided
+
+```{r listing 7.2}
+
 ```
