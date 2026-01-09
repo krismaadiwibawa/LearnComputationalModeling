@@ -600,6 +600,7 @@ Listing 4.5 R code to fit the modified version of GCM to some data
 
 source("GCMprednoisy.R")
 library(dfoptim)
+library(progress)
 
 # A function to get deviance from GCM
 # This function is the cost function that the optimizer (nmkb) attempts to minimize. For Maximum Likelihood Estimation, this function calculates the total Deviance, which is equivalent to minimizing the Negative Log-Likelihood (NLL)
@@ -665,7 +666,7 @@ data <- ceiling(data*N)
        
 # create more elaborate starting values where all parameters have multiple starting values
 set.seed(777)
-nGridsearch <- 100
+nGridsearch <- 50
 pb <- progress_bar$new(
   format = "  Running MLE [:bar] :percent | ETA: :eta",
   total = nGridsearch, clear = FALSE, width= 60)
@@ -723,7 +724,7 @@ for (f in seq_along(st_val)) {
     #}
   #}
 #}
-  pb$tick()
+  pb$tick() # a command to update progress bar
 }
 
 preds <- GCMutil(bestres$par,stim,exemplars,data,N, TRUE)
