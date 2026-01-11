@@ -517,7 +517,7 @@ Listing 4.2 Linking GCM and the binomial function
 
 # This code implements the core calculations of the General Context Model (GCM), a highly influential model in cognitive psychology used to predict how people categorize a new stimulus based on their memory of past examples (exemplars).
 
-source("GCMpred.R")
+source("script/GCMpred.R")
 # The function that implements the mathematical core of the GCM (stored in GCMpred.R file), calculating the predicted probability of a specific category response (e.g., Category A).
 
 N <- 2*80 # there were 2 responses nper face from 80 people
@@ -526,7 +526,7 @@ N_A <- round(N*.968) #N_B is implicitly N - N_A. This is the actual experimental
 c <- 4 # best-fitting parameter from Nosofsky (1991) 
 w <- c(0.19, 0.12, 0.25, 0.45) # best-fitting parameter from Nosofsky (1991)
 
-stim <- as.matrix(read.table("faceStim.csv", sep=",")) # The stimuli used
+stim <- as.matrix(read.table("data/faceStim.csv", sep=",")) # The stimuli used
 
 exemplars <- list(a=stim[1:5,], b=stim[6:10,]) # The exemplar is taken from the first 5 rows of the faceStim.csv (Exemplar for category A) and the next 5 rows (Exemplar for category B)
 
@@ -598,7 +598,7 @@ Listing 4.5 R code to fit the modified version of GCM to some data
 
 ```{r listing_4.5}
 
-source("GCMprednoisy.R")
+source("script/GCMprednoisy.R")
 library(dfoptim)
 library(progress)
 
@@ -651,11 +651,11 @@ GCMutil <- function(theta, stim, exemplars, data, N, retpreds){
 
 N <- 2*40 # there were 2 responses per face from 40 ppl. Each of the 40 participants viewed and categorized every single face stimulus two times.
 
-stim <- as.matrix(read.table("faceStim.csv", sep=","))
+stim <- as.matrix(read.table("data/faceStim.csv", sep=","))
 
 exemplars <- list(a=stim[1:5,], b= stim[6:10,])
 
-data <- scan(file="facesDataLearners.txt") # The proportions of 'A' responses by the participants for each stimuli (total 34 stimuli)
+data <- scan(file="data/facesDataLearners.txt") # The proportions of 'A' responses by the participants for each stimuli (total 34 stimuli)
 data <- ceiling(data*N)
 
 #for (w1 in c(0.25,0.5,0.75)){
