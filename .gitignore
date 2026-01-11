@@ -1,4 +1,7 @@
-.Rproj.user
+# Hide personal RStudio settings
+.Rproj.user/
+
+# Hide R history and data snapshots
 .Rhistory
 .RData
 .Ruserdata
