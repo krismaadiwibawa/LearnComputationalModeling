@@ -196,7 +196,7 @@ Listing 3.2 R code to generate synthetic data and compute regression parameters 
 ### and to calculate the discrepancy (rmsd), which will be used in ###
 ### the optimization                                               ###
 ######################################################################
-rm(list=ls())
+rm(list=ls()) # to clear the entire workspace (Global Environment) so we start the script with a clean slate
 
 # plot data and current predictions          
 getregpred <- function(parms,data) {
@@ -229,7 +229,7 @@ rmsd <-function(parms, data1) {
   iter <<- iter + 1
   preds <- getregpred(parms, data1)
   rmsd <- sqrt(sum((preds-data1[ ,1])^2)/length(preds))
-  cat(c("RMSD = ", rmsd, sep=""))
+  cat(c("RMSD = ", rmsd, "/ iter", iter, sep=""))
   # This shows the RMSD value in the console window
   return(rmsd)
   # if we don't specify what variable should the function return using the function "return()", the last variable computed will automatically be the value returned by the function. To ensure that this function returns the rmsd variable we use return(rmsd).
@@ -265,6 +265,7 @@ Regression analysis using optim()
 startParms <- c(-1., .2) 
 names(startParms) <- c("b1", "b0")
 # obtain parameter estimates
+iter <- 0
 xout <- optim(startParms, rmsd, data1=data)
 ```
 
@@ -517,7 +518,7 @@ Listing 4.2 Linking GCM and the binomial function
 
 # This code implements the core calculations of the General Context Model (GCM), a highly influential model in cognitive psychology used to predict how people categorize a new stimulus based on their memory of past examples (exemplars).
 
-source("script/GCMpred.R")
+source("scripts/GCMpred.R")
 # The function that implements the mathematical core of the GCM (stored in GCMpred.R file), calculating the predicted probability of a specific category response (e.g., Category A).
 
 N <- 2*80 # there were 2 responses nper face from 80 people
@@ -598,7 +599,7 @@ Listing 4.5 R code to fit the modified version of GCM to some data
 
 ```{r listing_4.5}
 
-source("script/GCMprednoisy.R")
+source("scripts/GCMprednoisy.R")
 library(dfoptim)
 library(progress)
 
@@ -1222,6 +1223,7 @@ View(spcdat)
 par(mfrow=c(1,1))
 
 library(cluster)
+dev.new(width = 6, height = 6, noRStudioGD = TRUE)
 gskmn <- clusGap(spcdat, FUN = kmeans, nstart = 20, K.max = 8, B=500)
 plot(gskmn, ylim=c(0.15, 0.5))
 
@@ -1229,6 +1231,7 @@ plot(gskmn, ylim=c(0.15, 0.5))
 
 #-------------------------------------------
 #pdf(file="kmeansSPC.pdf", width=8, height=4)
+dev.new(width = 9, height = 5, noRStudioGD = TRUE)
 par(mfrow=c(1,2))
 plot(colMeans(spcdat), ylim=c(0,1), type="b",
      xlab="Serial Position", ylab="Proportion Correct", main=NULL)
@@ -1300,6 +1303,7 @@ johnnie_after <- c(2+4,4+8)
 johnnie_versions <- list(johnnie_before, johnnie_after)
 
 # Execution
+dev.new(width = 8, height = 5, noRStudioGD = TRUE)
 par(mfrow = c(1, length(johnnie_versions)))
 
 for (i in seq_along(johnnie_versions)) {
@@ -1483,13 +1487,14 @@ for (i in 2:length(chain)) {
 }
 
 # ----------------------------------------------------------------------------------------
-
+dev.new(width = 6, height = 5, noRStudioGD = TRUE)
 hist(chain)
 mean(chain)
 
 # The Density Plot
 # The Density Plot (The Answer) shows a bell curve. The peak is at 144.
 # The width of this curve tells you the likely range. Even though you saw 144, the MCMC shows the "true" group mean could realistically be anywhere between 120 and 170.
+dev.new(width = 6, height = 5, noRStudioGD = TRUE)
 plot(density(chain),las=1,xlab=bquote("Sampled values of "*mu),
      yaxt="n",lwd=2,lty="dashed",
      main="",xlim=c(100,200),ylab="",
@@ -1504,6 +1509,7 @@ legend("topright",inset=.02,c("Normal PDF","All MCMC","Excluding burnin"),
 
 # The Trace-Plot
 # The Trace Plot (The Journey) shows the robot starting at 500, rushing down to 144, and then "vibrating" around 144. This vibration represents your uncertainty.
+dev.new(width = 6, height = 5, noRStudioGD = TRUE)
 plot(chain,type="l",las=1,xlab="Iteration",ylab="Value of accepted sample")
 lines(1:burnin,chain[1:burnin],col="red")
 
@@ -1552,12 +1558,15 @@ for (i in 2:n_iter) {
 burnin <- 1000
 final_chain <- chain[-(1:burnin)]
 
+dev.new(width = 7, height = 5, noRStudioGD = TRUE)
 hist(final_chain, main="Posterior for N=1000", xlab="Estimated Mean IQ")
 abline(v = mean(obs_data), col="red", lwd=2) # The data's average
 
+dev.new(width = 6, height = 5, noRStudioGD = TRUE)
 plot(chain,type="l",las=1,xlab="Iteration",ylab="Value of accepted sample")
 lines(1:burnin,chain[1:burnin],col="red")
 
+dev.new(width = 5, height = 5, noRStudioGD = TRUE)
 plot(density(chain),las=1,xlab=bquote("Sampled values of "*mu),
      yaxt="n",lwd=2,lty="dashed",
      main="",xlim=c(100,200),ylab="",
